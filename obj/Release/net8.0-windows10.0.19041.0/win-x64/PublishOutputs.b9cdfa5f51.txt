@@ -1,0 +1,17 @@
+C:\projects\hotcpu\bin\Publish\HotCPU.exe
+C:\projects\hotcpu\bin\Publish\tenor.gif
+C:\projects\hotcpu\bin\Publish\HotCPU.dll
+C:\projects\hotcpu\bin\Publish\HotCPU.deps.json
+C:\projects\hotcpu\bin\Publish\HotCPU.runtimeconfig.json
+C:\projects\hotcpu\bin\Publish\HotCPU.pdb
+C:\projects\hotcpu\bin\Publish\Microsoft.Windows.SDK.NET.dll
+C:\projects\hotcpu\bin\Publish\WinRT.Runtime.dll
+C:\projects\hotcpu\bin\Publish\HidSharp.dll
+C:\projects\hotcpu\bin\Publish\LibreHardwareMonitorLib.dll
+C:\projects\hotcpu\bin\Publish\Mono.Posix.NETStandard.dll
+C:\projects\hotcpu\bin\Publish\NvAPIWrapper.dll
+C:\projects\hotcpu\bin\Publish\System.CodeDom.dll
+C:\projects\hotcpu\bin\Publish\System.IO.Ports.dll
+C:\projects\hotcpu\bin\Publish\System.Management.dll
+C:\projects\hotcpu\bin\Publish\MonoPosixHelper.dll
+C:\projects\hotcpu\bin\Publish\libMonoPosixHelper.dll
