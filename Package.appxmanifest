@@ -33,7 +33,9 @@
         Description="Monitor your CPU/GPU temperature"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
-        Square44x44Logo="Images\Square44x44Logo.png">
+        Square44x44Logo="Images\Square44x44Logo.png"
+        Wide310x150Logo="Images\Wide310x150Logo.png"
+        Square310x310Logo="Images\Square310x310Logo.png">
       </uap:VisualElements>
       <Extensions>
         <!-- No special extensions needed yet, FullTrust is implied by EntryPoint -->

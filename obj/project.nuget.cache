@@ -1,12 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "UqZttU14Bwk=",
+  "dgSpecHash": "KfWmBcmA0ho=",
   "success": true,
   "projectFilePath": "C:\\projects\\hotcpu\\HotCPU.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\sinan\\.nuget\\packages\\excss\\4.2.3\\excss.4.2.3.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\hidsharp\\2.1.0\\hidsharp.2.1.0.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\librehardwaremonitorlib\\0.9.4\\librehardwaremonitorlib.0.9.4.nupkg.sha512",
+    "C:\\Users\\sinan\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.22\\microsoft.net.illink.tasks.8.0.22.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\microsoft.netcore.platforms\\5.0.0\\microsoft.netcore.platforms.5.0.0.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\microsoft.win32.registry\\5.0.0\\microsoft.win32.registry.5.0.0.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\microsoft.win32.systemevents\\5.0.0\\microsoft.win32.systemevents.5.0.0.nupkg.sha512",
