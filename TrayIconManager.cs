@@ -154,33 +154,20 @@ namespace HotCPU
 
         private void OnTemperatureChanged(TemperatureReading reading)
         {
+            // Marshall to UI thread strictly
+            if (_contextMenu.InvokeRequired)
+            {
+                _contextMenu.Invoke(() => OnTemperatureChanged(reading));
+                return;
+            }
+
             // Check if we need to start/stop animation
             bool critical = reading.Level == TemperatureLevel.Critical;
 
             // Trigger Popup Alert only on transition TO Critical
             if (critical && _lastLevel != TemperatureLevel.Critical)
             {
-                if (_settings.ShowCriticalPopup)
-                {
-                    // Only show if we haven't shown it recently (e.g. 1 minute cooldown) or just simple edge trigger
-                // User said "when it reaches critical", implying the event of reaching it.
-                // Simple edge trigger is usually expected.
-                try 
-                {
-                    // Run on UI thread
-                    if (_notifyIcon.ContextMenuStrip != null) // Use context strip to find UI thread if needed, or just let it float
-                    {
-                        // We need to ensure we are on UI thread. _notifyIcon doesn't expose Invoke easily unless we wrapped it or used a Form.
-                        // However, Timer callbacks are on UI thread in WinForms.
-                        if (_settings.ShowCriticalPopup)
-                        {
-                            var alert = new CriticalAlertForm(reading.RoundedTemperature);
-                            alert.Show(); // Show non-modal
-                        }
-                    }
-                }
-                catch { }
-                } // End if ShowCriticalPopup
+                // Notification logic removed
             }
             _lastLevel = reading.Level;
 
@@ -201,11 +188,7 @@ namespace HotCPU
                     _animationTimer.Stop();
                 }
                 
-                // Normal update
-                if (_notifyIcon.ContextMenuStrip?.InvokeRequired == true)
-                    _notifyIcon.ContextMenuStrip.Invoke(() => UpdateIcon(reading));
-                else
-                    UpdateIcon(reading);
+                UpdateIcon(reading);
             }
         }
 

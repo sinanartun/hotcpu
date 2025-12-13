@@ -47,7 +47,6 @@ namespace HotCPU
         private NumericUpDown _criticalThresholdNum = null!;
         private CheckBox _startWithWindowsCheck = null!;
         private ComboBox _fontSizeCombo = null!;
-        private CheckBox _chkShowPopup = null!;
         private CheckBox _useGradientCheck = null!;
         private Button _coolColorBtn = null!;
         private Button _warmColorBtn = null!;
@@ -299,8 +298,6 @@ namespace HotCPU
             page.Controls.Add(_startWithWindowsCheck);
             y += 30;
 
-            _chkShowPopup = new CheckBox { Text = "Show Popup Notification on Critical", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
-            page.Controls.Add(_chkShowPopup);
         }
 
         private void BuildColorsPanel(Panel page)
@@ -525,7 +522,7 @@ namespace HotCPU
             };
 
             _startWithWindowsCheck.Checked = _settings.StartWithWindows;
-            _chkShowPopup.Checked = _settings.ShowCriticalPopup;
+            _startWithWindowsCheck.Checked = _settings.StartWithWindows;
             
             // Colors
             _useGradientCheck.Checked = _settings.UseGradientColors;
@@ -594,7 +591,7 @@ namespace HotCPU
             };
 
             _settings.StartWithWindows = _startWithWindowsCheck.Checked;
-            _settings.ShowCriticalPopup = _chkShowPopup.Checked;
+            _settings.StartWithWindows = _startWithWindowsCheck.Checked;
             _settings.UseGradientColors = _useGradientCheck.Checked;
 
             _settings.SetCoolColor(_coolColorBtn.BackColor);

@@ -28,6 +28,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="HotCPU.Tests\**" />
+    <EmbeddedResource Remove="HotCPU.Tests\**" />
+    <None Remove="HotCPU.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="tenor.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

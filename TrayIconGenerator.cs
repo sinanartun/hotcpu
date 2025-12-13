@@ -76,15 +76,32 @@ namespace HotCPU
             }
         }
 
+        private static readonly Dictionary<float, Font> _fontCache = new();
+
         private static Font GetFont(float sizePx)
         {
-            try { return new Font("Segoe UI Variable Text", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); }
-            catch { }
+            if (_fontCache.TryGetValue(sizePx, out var cachedFont))
+                return cachedFont;
 
-            try { return new Font("Segoe UI Variable Display", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); }
-            catch { }
+            Font font;
+            try 
+            { 
+                font = new Font("Segoe UI Variable Text", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); 
+            }
+            catch 
+            {
+                try 
+                { 
+                    font = new Font("Segoe UI Variable Display", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); 
+                }
+                catch 
+                {
+                    font = new Font("Segoe UI", sizePx, FontStyle.Regular, GraphicsUnit.Pixel);
+                }
+            }
 
-            return new Font("Segoe UI", sizePx, FontStyle.Regular, GraphicsUnit.Pixel);
+            _fontCache[sizePx] = font;
+            return font;
         }
 
         private static Color GetTextColor(int temperature, TemperatureLevel level, AppSettings settings)

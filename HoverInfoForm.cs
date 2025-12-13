@@ -1,14 +1,13 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace HotCPU
 {
     /// <summary>
     /// A custom borderless form that acts as a rich tooltip.
-    /// </summary>
-    /// <summary>
-    /// A custom borderless form that acts as a rich tooltip with sparklines.
     /// </summary>
     internal class HoverInfoForm : Form
     {
@@ -18,10 +17,6 @@ namespace HotCPU
         private readonly Font _fontBold;
         private readonly Font _fontNormal;
         private readonly Font _fontEmoji;
-        
-        // Animated Header
-        private Image? _headerImage;
-        private const int HeaderHeight = 120; // Fixed height for header
 
         public HoverInfoForm()
         {
@@ -37,35 +32,10 @@ namespace HotCPU
             _fontNormal = new Font("Segoe UI", 9f, FontStyle.Regular);
             _fontEmoji = new Font("Segoe UI Emoji", 9f);
 
-            // Load header GIF
-            try
-            {
-                string gifPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tenor.gif");
-                // Fallback
-                if (!File.Exists(gifPath))
-                     gifPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "tenor.gif");
-
-                if (File.Exists(gifPath))
-                {
-                    _headerImage = Image.FromFile(gifPath);
-                    if (ImageAnimator.CanAnimate(_headerImage))
-                    {
-                        ImageAnimator.Animate(_headerImage, OnFrameChanged);
-                    }
-                }
-            }
-            catch { }
-
             _monitorTimer = new System.Windows.Forms.Timer { Interval = 50 }; // Ultra fast check
             _monitorTimer.Tick += MonitorTimer_Tick;
 
             Paint += OnPaint;
-        }
-
-        private void OnFrameChanged(object? sender, EventArgs e)
-        {
-            if (IsDisposed || Disposing || !Visible) return;
-            try { Invalidate(); } catch { }
         }
 
         public void UpdateData(TemperatureReading reading)
@@ -91,16 +61,6 @@ namespace HotCPU
                 Show();
                 _monitorTimer.Start();
             }
-            else
-            {
-                // Only move the window if cursor moved significantly to avoid jitter
-                // We track the window anchor separately if needed, but checking distance from current bounds is enough
-                // Existing logic to move window if needed:
-                // Actually, let's NOT move the massive tooltip around while hovering the small icon.
-                // It feels more stable if it stays put until closed and re-opened.
-                // But valid to update if user moves to a different screen?
-                // For now, minimal movement updates.
-            }
             if (!_monitorTimer.Enabled) _monitorTimer.Start();
         }
 
@@ -112,9 +72,6 @@ namespace HotCPU
             float maxWidth = 200; 
             float height = 10;
             
-            // Add Header Height
-            if (_headerImage != null) height += HeaderHeight;
-
             float rowHeight = 16;
             float headerHeight = 22;
 
@@ -145,31 +102,6 @@ namespace HotCPU
             if (_currentReading == null) return;
 
             float y = 10;
-            
-            // Draw Header
-            if (_headerImage != null)
-            {
-                ImageAnimator.UpdateFrames(_headerImage);
-                // Draw image at top, full width, fixed height
-                // Maintain aspect ratio or stretch? Header usually stretch or fit.
-                // Let's stretch to fill width, crop height? Or just stretch.
-                // User said "show on top... tenor gif". It's landscape likely.
-                g.DrawImage(_headerImage, new Rectangle(0, 0, Width, HeaderHeight));
-                
-                // Draw Temp on Header
-                string headerTemp = $"{_currentReading.RoundedTemperature}°C";
-                using var headerFont = new Font("Segoe UI", 36, FontStyle.Bold);
-                var headerSize = g.MeasureString(headerTemp, headerFont);
-                float tx = (Width - headerSize.Width) / 2;
-                float ty = (HeaderHeight - headerSize.Height) / 2;
-                
-                // Shadow
-                g.DrawString(headerTemp, headerFont, Brushes.Black, tx + 2, ty + 2);
-                // Text
-                g.DrawString(headerTemp, headerFont, Brushes.White, tx, ty);
-
-                y += HeaderHeight + 5;
-            }
 
             float xName = 10;
             float xValue = 190;
@@ -187,7 +119,7 @@ namespace HotCPU
                 var visibleSensors = hw.Sensors
                     .Where(s => IsVisible(s))
                     .OrderBy(s => !s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase))
-                    .ThenBy(s => ExtractNumber(s.Name))
+                    .ThenBy(s => HotCPU.Helpers.StringHelper.ExtractNumber(s.Name))
                     .ThenBy(s => s.Name)
                     .ToList();
 
@@ -302,12 +234,6 @@ namespace HotCPU
             }
         }
         
-        private static int ExtractNumber(string name)
-        {
-            var numStr = new string(name.Where(char.IsDigit).ToArray());
-            return int.TryParse(numStr, out var num) ? num : 999;
-        }
-
         protected override bool ShowWithoutActivation => true;
 
         protected override void Dispose(bool disposing)
@@ -318,12 +244,6 @@ namespace HotCPU
                 _fontNormal?.Dispose();
                 _fontEmoji?.Dispose();
                 _monitorTimer?.Dispose();
-                
-                if (_headerImage != null)
-                {
-                    ImageAnimator.StopAnimate(_headerImage, OnFrameChanged);
-                    _headerImage.Dispose();
-                }
             }
             base.Dispose(disposing);
         }

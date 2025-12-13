@@ -477,7 +477,7 @@ namespace HotCPU
                     // Sort sensors: cores first (by number), then others
                     var sortedSensors = hw.Sensors
                         .OrderBy(s => !s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase))
-                        .ThenBy(s => ExtractNumber(s.Name))
+                        .ThenBy(s => HotCPU.Helpers.StringHelper.ExtractNumber(s.Name))
                         .ThenBy(s => s.Name);
 
                     foreach (var sensor in sortedSensors)
@@ -488,12 +488,6 @@ namespace HotCPU
 
                 return lines.Any() ? string.Join("\n", lines) : "No temperature sensors found.";
             }
-        }
-
-        private static int ExtractNumber(string name)
-        {
-            var numStr = new string(name.Where(char.IsDigit).ToArray());
-            return int.TryParse(numStr, out var num) ? num : 999;
         }
 
         public List<CoreTemp> CoreTemps => AllTemps

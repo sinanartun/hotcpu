@@ -86,8 +86,9 @@ namespace HotCPU
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
 
-                string content = "";
+                string content;
                 string format = _settings.LogFormat.ToUpperInvariant();
+                var sb = new System.Text.StringBuilder();
 
                 if (format == "JSON")
                 {
@@ -105,28 +106,37 @@ namespace HotCPU
                         File.AppendAllText(_settings.LogPath, string.Join(",", keys) + Environment.NewLine);
                     }
 
-                    // Note: This simple CSV impl assumes keys don't change often. 
-                    // If keys change (user changes sensors), the CSV columns might mismatch until manual fix or file delete.
-                    // For now, sufficient.
-                     var values = entry.Values.Select(v => 
-                        v is float f ? f.ToString("F1") : v.ToString());
+                     foreach (var value in entry.Values)
+                     {
+                         var s = value is float f ? f.ToString("F1") : value.ToString();
+                         if (s != null && (s.Contains(",") || s.Contains("\"")))
+                         {
+                             // Simple escape: double quotes around, double up internal quotes
+                             s = $"\"{s.Replace("\"", "\"\"")}\"";
+                         }
+                         sb.Append(s).Append(',');
+                     }
                     
-                    content = string.Join(",", values) + Environment.NewLine;
-                    File.AppendAllText(_settings.LogPath, content);
+                    if (sb.Length > 0) sb.Length--; // Remove last comma
+                    sb.AppendLine();
+                    File.AppendAllText(_settings.LogPath, sb.ToString());
                 }
                 else // TXT
                 {
-                    content = $"[{entry["Timestamp"]}] ";
+                    sb.Append('[').Append(entry["Timestamp"]).Append("] ");
                     foreach (var kvp in entry)
                     {
                         if (kvp.Key == "Timestamp") continue;
                         if (kvp.Value is float f)
-                            content += $"{kvp.Key}: {f:F1}°C, ";
+                            sb.Append(kvp.Key).Append(": ").Append(f.ToString("F1")).Append("°C, ");
                         else
-                            content += $"{kvp.Key}: {kvp.Value}, ";
+                            sb.Append(kvp.Key).Append(": ").Append(kvp.Value).Append(", ");
                     }
-                    content = content.TrimEnd(',', ' ') + Environment.NewLine;
-                    File.AppendAllText(_settings.LogPath, content);
+                    if (sb.Length >= 2 && sb[sb.Length - 2] == ',')
+                        sb.Length -= 2; // Trim last ", "
+                    
+                    sb.AppendLine();
+                    File.AppendAllText(_settings.LogPath, sb.ToString());
                 }
             }
             catch { }
