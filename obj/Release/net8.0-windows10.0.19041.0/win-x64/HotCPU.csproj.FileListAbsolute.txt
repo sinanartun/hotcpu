@@ -26,3 +26,6 @@ C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\HotCPU.genrunt
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\ref\HotCPU.dll
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\NvAPIWrapper.dll
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\tenor.gif
+C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\HotCPU.sourcelink.json
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\ExCSS.dll
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Svg.dll
