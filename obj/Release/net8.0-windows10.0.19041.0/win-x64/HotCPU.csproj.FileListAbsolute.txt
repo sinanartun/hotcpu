@@ -29,3 +29,10 @@ C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\tenor.gif
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\HotCPU.sourcelink.json
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\ExCSS.dll
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Svg.dll
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\AppIcon.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\BadgeLogo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Square150x150Logo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Square310x310Logo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Square44x44Logo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\StoreLogo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Wide310x150Logo.png

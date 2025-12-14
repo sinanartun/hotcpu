@@ -100,13 +100,3 @@ C:\projects\hotcpu\bin\TempBuild\runtimes\win\lib\net8.0\System.IO.Ports.dll
 C:\projects\hotcpu\bin\TempBuild\runtimes\win\lib\net8.0\System.Management.dll
 C:\projects\hotcpu\bin\TempBuild\Microsoft.Windows.SDK.NET.dll
 C:\projects\hotcpu\bin\TempBuild\WinRT.Runtime.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\tenor.gif
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\HotCPU.exe
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\HotCPU.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\HidSharp.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\LibreHardwareMonitorLib.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\NvAPIWrapper.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\runtimes\win\lib\net8.0\System.IO.Ports.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\runtimes\win\lib\net8.0\System.Management.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\Microsoft.Windows.SDK.NET.dll
-C:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\WinRT.Runtime.dll
