@@ -17,16 +17,19 @@ namespace HotCPU
         private Panel _panelGeneral = null!;
         private Panel _panelColors = null!;
         private Panel _panelSensors = null!;
+        private Panel _panelTray = null!;
         private Panel _panelLogging = null!;
         
         // Nav Buttons
         private Button _btnGeneral = null!;
         private Button _btnColors = null!;
         private Button _btnSensors = null!;
+        private Button _btnTray = null!;
         private Button _btnLogging = null!;
 
         // Original Fields
         private CheckedListBox _sensorsCheckList = null!;
+        private CheckedListBox _traySensorsCheckList = null!;
         private readonly List<HardwareTemps> _availableHardware;
 
         // Logging Controls
@@ -148,6 +151,8 @@ namespace HotCPU
             _btnGeneral = CreateNavButton("General", navPanel);
             _btnColors = CreateNavButton("Colors", navPanel);
             _btnSensors = CreateNavButton("Sensors", navPanel);
+            _btnSensors = CreateNavButton("Sensors", navPanel);
+            _btnTray = CreateNavButton("Tray Icon", navPanel);
             _btnLogging = CreateNavButton("Logging", navPanel);
 
             Controls.Add(navPanel);
@@ -175,6 +180,12 @@ namespace HotCPU
 
             _panelSensors = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildSensorsPanel(_panelSensors);
+
+            _panelSensors = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+            BuildSensorsPanel(_panelSensors);
+
+            _panelTray = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+            BuildTrayPanel(_panelTray);
 
             _panelLogging = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildLoggingPanel(_panelLogging);
@@ -230,6 +241,8 @@ namespace HotCPU
                 if (text == "General") ShowPanel(_panelGeneral);
                 else if (text == "Colors") ShowPanel(_panelColors);
                 else if (text == "Sensors") ShowPanel(_panelSensors);
+                else if (text == "Sensors") ShowPanel(_panelSensors);
+                else if (text == "Tray Icon") ShowPanel(_panelTray);
                 else if (text == "Logging") ShowPanel(_panelLogging);
             };
             parent.Controls.Add(btn);
@@ -246,6 +259,8 @@ namespace HotCPU
             if (panel == _panelGeneral) HighlightButton(_btnGeneral);
             else if (panel == _panelColors) HighlightButton(_btnColors);
             else if (panel == _panelSensors) HighlightButton(_btnSensors);
+            else if (panel == _panelSensors) HighlightButton(_btnSensors);
+            else if (panel == _panelTray) HighlightButton(_btnTray);
             else if (panel == _panelLogging) HighlightButton(_btnLogging);
         }
 
@@ -255,6 +270,8 @@ namespace HotCPU
             _btnGeneral.BackColor = c;
             _btnColors.BackColor = c;
             _btnSensors.BackColor = c;
+            _btnSensors.BackColor = c;
+            _btnTray.BackColor = c;
             _btnLogging.BackColor = c;
         }
 
@@ -367,6 +384,40 @@ namespace HotCPU
             {
                 for (int i = 0; i < _sensorsCheckList.Items.Count; i++)
                     _sensorsCheckList.SetItemChecked(i, chkSelectAll.Checked);
+            };
+        }
+
+        private void BuildTrayPanel(Panel page)
+        {
+            var label = new Label
+            {
+                Text = "Select sensors to show in system tray:",
+                Location = new Point(10, 10),
+                AutoSize = true
+            };
+            page.Controls.Add(label);
+
+            var chkSelectAll = new CheckBox 
+            { 
+                Text = "Select All", 
+                Location = new Point(450, 8), 
+                AutoSize = true,
+                UseVisualStyleBackColor = true
+            };
+            page.Controls.Add(chkSelectAll);
+
+            _traySensorsCheckList = new CheckedListBox
+            {
+                Location = new Point(10, 35),
+                Size = new Size(540, 370),
+                CheckOnClick = true
+            };
+            page.Controls.Add(_traySensorsCheckList);
+
+            chkSelectAll.CheckedChanged += (s, e) =>
+            {
+                for (int i = 0; i < _traySensorsCheckList.Items.Count; i++)
+                    _traySensorsCheckList.SetItemChecked(i, chkSelectAll.Checked);
             };
         }
 
@@ -553,6 +604,18 @@ namespace HotCPU
                 }
             }
 
+            // Tray Sensors
+            _traySensorsCheckList.Items.Clear();
+            foreach (var hw in _availableHardware)
+            {
+                foreach (var sensor in hw.Sensors)
+                {
+                    bool isSelected = _settings.TraySensorIds.Contains(sensor.Identifier);
+                    string displayName = $"{hw.Name} - {sensor.Name}";
+                    _traySensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isSelected);
+                }
+            }
+
             // Logging
             _chkEnableLogging.Checked = _settings.LogEnabled;
             _txtLogPath.Text = _settings.LogPath;
@@ -632,6 +695,19 @@ namespace HotCPU
 
             // Update System Startup logic
             await StartupManager.SetStartupEnabledAsync(_startWithWindowsCheck.Checked);
+
+            // Save Tray Sensors
+            _settings.TraySensorIds.Clear();
+            for (int i = 0; i < _traySensorsCheckList.Items.Count; i++)
+            {
+                if (_traySensorsCheckList.GetItemChecked(i))
+                {
+                    if (_traySensorsCheckList.Items[i] is SensorItem item)
+                    {
+                        _settings.TraySensorIds.Add(item.Id);
+                    }
+                }
+            }
 
             // Save Logging settings
             _settings.LogEnabled = _chkEnableLogging.Checked;
