@@ -1,4 +1,48 @@
-import './style.css'
+
+// Theme Switching Logic
+const themeBtn = document.getElementById('theme-toggle');
+const logoImg = document.getElementById('app-logo');
+const html = document.documentElement;
+
+// Function to set theme
+const setTheme = (theme) => {
+  html.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+
+  // Swap Logo
+  if (theme === 'light') {
+    // Light Mode -> Needs Dark Logo
+    logoImg.src = '/LogoDark256.png';
+  } else {
+    // Dark Mode -> Needs Light Logo
+    logoImg.src = '/LogoLight256.png';
+  }
+};
+
+// Check for saved preference or system preference
+const savedTheme = localStorage.getItem('theme');
+const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+if (savedTheme) {
+  setTheme(savedTheme);
+} else {
+  setTheme(systemPrefersDark ? 'dark' : 'light');
+}
+
+// Watch for system theme changes if no preference is saved
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  if (!localStorage.getItem('theme')) {
+    setTheme(e.matches ? 'dark' : 'light');
+  }
+});
+
+// Toggle Button Click
+themeBtn.addEventListener('click', () => {
+  const currentTheme = html.getAttribute('data-theme');
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  setTheme(newTheme);
+});
+
 
 // Smooth scrolling for anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
