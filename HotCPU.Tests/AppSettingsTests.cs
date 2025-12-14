@@ -34,6 +34,19 @@ namespace HotCPU.Tests
         {
             var settings = new AppSettings();
             Assert.Empty(settings.HiddenSensorIds);
+            Assert.Empty(settings.TraySensorIds);
+        }
+
+        [Fact]
+        public void TraySensorIds_ShouldPersist()
+        {
+            var settings = new AppSettings();
+            settings.TraySensorIds.Add("sensor_1");
+            settings.TraySensorIds.Add("sensor_2");
+
+            Assert.Contains("sensor_1", settings.TraySensorIds);
+            Assert.Contains("sensor_2", settings.TraySensorIds);
+            Assert.Equal(2, settings.TraySensorIds.Count);
         }
     }
 }
