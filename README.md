@@ -30,8 +30,8 @@
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/HotCPU.git
-    cd HotCPU
+    git clone https://github.com/sinanartun/hotcpu.git
+    cd hotcpu
     ```
 
 2.  **Build the project:**
@@ -41,7 +41,7 @@
     ```
 
 3.  **Run:**
-    Locate the executable in `bin/Release/net8.0-windows10.0.19041.0/win-x64/` and run `HotCPU.exe`.
+    Locate the executable in `bin/Release/net8.0-windows10.0.19041.0/win-x64/` and run `hotcpu.exe`.
 
 > **Note:** Administrator privileges may be required to access certain hardware sensors.
 
@@ -65,5 +65,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 <p align="center">
-  Made with ❤️ for keeping your PC cool.
+  Made with ❤️ by Sinan Artun
 </p>
