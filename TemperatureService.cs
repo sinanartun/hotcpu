@@ -16,6 +16,7 @@ namespace HotCPU
         private readonly AppSettings _settings;
         private bool _disposed;
         private bool _isNvApiInitialized;
+        private string _cachedCpuName = "CPU";
 
         public event Action<TemperatureReading>? TemperatureChanged;
         public TemperatureReading CurrentReading { get; private set; } = new(0, "Initializing...", null, new List<HardwareTemps>());
@@ -50,6 +51,8 @@ namespace HotCPU
                 _isNvApiInitialized = false;
             }
             
+            _cachedCpuName = GetCpuNameFromWmi();
+
             _timer = new System.Timers.Timer(_settings.RefreshIntervalMs);
             _timer.Elapsed += OnTimerElapsed;
             _timer.AutoReset = true;
@@ -88,7 +91,7 @@ namespace HotCPU
                     hardware.Update();
                     
                     var hwTemps = new HardwareTemps(
-                        hardware.Name,
+                        HotCPU.Helpers.StringHelper.SimplifyHardwareName(hardware.Name),
                         GetHardwareTypeIcon(hardware.HardwareType),
                         hardware.HardwareType.ToString());
 
@@ -162,15 +165,15 @@ namespace HotCPU
                     if (maxSensor != null)
                     {
                         mainCpuTemp = maxSensor.Temperature;
-                        cpuName = "CPU (Estimated)";
+                        cpuName = HotCPU.Helpers.StringHelper.SimplifyHardwareName(_cachedCpuName);
 
                         // Create a simulated CPU hardware so it shows up in the UI/Settings
-                        var simCpu = new HardwareTemps("CPU (System Estimate)", "⚠️", "Cpu");
+                        var simCpu = new HardwareTemps(cpuName, "🔲", "Cpu");
                         var simId = "Simulated_CPU_Max";
                         UpdateHistory(simId, maxSensor.Temperature);
                         
                         simCpu.Sensors.Add(new SensorTemp(
-                            $"Max Temp (from {maxSensor.Name})", 
+                            "Core (Estimated)", 
                             maxSensor.Temperature, 
                             GetHistory(simId), 
                             simId));
@@ -209,7 +212,7 @@ namespace HotCPU
                 {
                     try
                     {
-                        var name = gpu.FullName;
+                        var name = HotCPU.Helpers.StringHelper.SimplifyHardwareName(gpu.FullName);
                         // Thermal Sensors
                         foreach (var sensor in gpu.ThermalInformation.ThermalSensors)
                         {
@@ -217,13 +220,10 @@ namespace HotCPU
                             // Sanity check
                             if (temp <= 0 || temp >= 200) continue;
 
-                            var sensorName = $"{name} - {sensor.Target}";
+                            var rawSensName = sensor.Target.ToString();
+                            // "GPU", "Memory", "PowerSupply", "Board"
                             
-                            // Map targets to readable names
-                            // if (sensor.Target == ThermalSettingsTarget.GPU) sensorName = name;
-                            // if (sensor.Target == ThermalSettingsTarget.Memory) sensorName = $"{name} Memory";
-                            // if (sensor.Target == ThermalSettingsTarget.PowerSupply) sensorName = $"{name} VRM";
-                            // if (sensor.Target == ThermalSettingsTarget.Board) sensorName = $"{name} PCB";
+                            var sensorName = HotCPU.Helpers.StringHelper.CleanSensorName(rawSensName, name);
 
                             var id = $"NvAPI_{name}_{sensor.Target}";
                             UpdateHistory(id, temp);
@@ -274,8 +274,10 @@ namespace HotCPU
                     var id = sensor.Identifier.ToString();
                     UpdateHistory(id, sensor.Value.Value);
 
+                    var simplifiedName = HotCPU.Helpers.StringHelper.CleanSensorName(sensor.Name, hwTemps.Name);
+
                     hwTemps.Sensors.Add(new SensorTemp(
-                        sensor.Name, 
+                        simplifiedName, 
                         sensor.Value.Value,
                         GetHistory(id),
                         id));
@@ -316,11 +318,21 @@ namespace HotCPU
                             }
                         }
                             
+                        
+                        // Clean sensor name relative to SUBhardware name
+                        if (name.Contains("-"))
+                        {
+                            var parts = name.Split('-');
+                            if (parts.Length > 1) name = parts[1].Trim();
+                        }
+                        
+                        var simplifiedSensor = HotCPU.Helpers.StringHelper.CleanSensorName(name, subHardware.Name);
+
                         var id = sensor.Identifier.ToString();
                         UpdateHistory(id, sensor.Value.Value);
 
                         hwTemps.Sensors.Add(new SensorTemp(
-                            name, 
+                            simplifiedSensor, 
                             sensor.Value.Value,
                             GetHistory(id),
                             id));
@@ -393,7 +405,10 @@ namespace HotCPU
                             var tempCelsius = Convert.ToSingle(tempObj);
                             var id = $"WMI_Disk_{name}";
                             UpdateHistory(id, tempCelsius);
-                            diskTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                            
+                            var simpleDisk = HotCPU.Helpers.StringHelper.SimplifyHardwareName(name);
+                            
+                            diskTemps.Sensors.Add(new SensorTemp(simpleDisk, tempCelsius, GetHistory(id), id));
                         }
                     }
                     catch { }
@@ -448,6 +463,23 @@ namespace HotCPU
             catch { }
 
             return cimTemps;
+        }
+
+
+        private string GetCpuNameFromWmi()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher("root\\CIMv2", "SELECT Name FROM Win32_Processor");
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    var name = obj["Name"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(name)) 
+                        return name.Trim();
+                }
+            }
+            catch { }
+            return "CPU (System Estimate)";
         }
 
         private float? GetMainCpuTemp(List<SensorTemp> sensors)

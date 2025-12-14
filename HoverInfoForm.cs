@@ -72,7 +72,7 @@ namespace HotCPU
             float maxWidth = 200; 
             float height = 10;
             
-            float rowHeight = 16;
+            float rowHeight = 24;
             float headerHeight = 22;
 
             foreach (var hw in _currentReading.AllTemps.Where(h => h.Sensors.Any()))
@@ -91,7 +91,7 @@ namespace HotCPU
                 if (totalWidth + 40 > maxWidth) maxWidth = totalWidth + 40;
             }
 
-            return new Size(330, (int)height + 10);
+            return new Size(480, (int)height + 10);
         }
 
         private void OnPaint(object? sender, PaintEventArgs e)
@@ -104,10 +104,10 @@ namespace HotCPU
             float y = 10;
 
             float xName = 10;
-            float xValue = 190;
-            float xChart = 240;
-            float chartWidth = 70;
-            float rowHeight = 16;
+            float xValue = 260;
+            float xChart = 320;
+            float chartWidth = 140;
+            float rowHeight = 24;
 
             var brushText = Brushes.White;
             var brushDim = Brushes.LightGray;
@@ -138,7 +138,7 @@ namespace HotCPU
                 foreach (var sensor in visibleSensors)
                 {
                     string name = sensor.Name;
-                    if (name.Length > 22) name = name.Substring(0, 19) + "...";
+                    if (name.Length > 28) name = name.Substring(0, 25) + "...";
                     g.DrawString(name, _fontNormal, brushDim, xName, y);
 
                     string val = $"{sensor.RoundedTemp}°C";
