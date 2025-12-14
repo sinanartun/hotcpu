@@ -12,12 +12,15 @@ const setTheme = (theme) => {
   localStorage.setItem('theme', theme);
 
   // Swap Logo
+  const heroLogo = document.getElementById('hero-logo');
   if (theme === 'light') {
     // Light Mode -> Needs Dark Logo
     logoImg.src = '/LogoDark256.png';
+    if (heroLogo) heroLogo.src = '/LogoDark256.png';
   } else {
     // Dark Mode -> Needs Light Logo
     logoImg.src = '/LogoLight256.png';
+    if (heroLogo) heroLogo.src = '/LogoLight256.png';
   }
 };
 
