@@ -148,8 +148,11 @@ namespace HotCPU
                 }
                 catch { }
 
-                // Fallback: If no CPU temp found, use the MAX of any available sensor
-                if (mainCpuTemp == null || mainCpuTemp <= 0)
+                // Check if we have any real CPU
+                bool hasCpu = allHardwareTemps.Any(h => h.Type == "Cpu" && h.Sensors.Any());
+
+                // Fallback: If no CPU temp found, usage the MAX of any available sensor AND create a simulated CPU entry
+                if (!hasCpu || mainCpuTemp == null || mainCpuTemp <= 0)
                 {
                     var maxSensor = allHardwareTemps
                         .SelectMany(h => h.Sensors)
@@ -159,9 +162,21 @@ namespace HotCPU
                     if (maxSensor != null)
                     {
                         mainCpuTemp = maxSensor.Temperature;
-                        // Find which hardware this sensor belongs to
-                        var parentHw = allHardwareTemps.FirstOrDefault(h => h.Sensors.Contains(maxSensor));
-                        cpuName = parentHw?.Name ?? "System";
+                        cpuName = "CPU (Estimated)";
+
+                        // Create a simulated CPU hardware so it shows up in the UI/Settings
+                        var simCpu = new HardwareTemps("CPU (System Estimate)", "⚠️", "Cpu");
+                        var simId = "Simulated_CPU_Max";
+                        UpdateHistory(simId, maxSensor.Temperature);
+                        
+                        simCpu.Sensors.Add(new SensorTemp(
+                            $"Max Temp (from {maxSensor.Name})", 
+                            maxSensor.Temperature, 
+                            GetHistory(simId), 
+                            simId));
+                        
+                        // Insert at the top so it looks like a primary CPU
+                        allHardwareTemps.Insert(0, simCpu);
                     }
                 }
 
