@@ -1,4 +1,6 @@
 
+import './style.css';
+
 // Theme Switching Logic
 const themeBtn = document.getElementById('theme-toggle');
 const logoImg = document.getElementById('app-logo');
