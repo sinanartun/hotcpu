@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\projects\\hotcpu\\HotCPU.csproj": {}
+    "C:\\projects\\hotcpu\\HotCPU.csproj": {}
   },
   "projects": {
-    "c:\\projects\\hotcpu\\HotCPU.csproj": {
+    "C:\\projects\\hotcpu\\HotCPU.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\projects\\hotcpu\\HotCPU.csproj",
+        "projectUniqueName": "C:\\projects\\hotcpu\\HotCPU.csproj",
         "projectName": "HotCPU",
-        "projectPath": "c:\\projects\\hotcpu\\HotCPU.csproj",
+        "projectPath": "C:\\projects\\hotcpu\\HotCPU.csproj",
         "packagesPath": "C:\\Users\\sinan\\.nuget\\packages\\",
-        "outputPath": "c:\\projects\\hotcpu\\obj\\",
+        "outputPath": "C:\\projects\\hotcpu\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
