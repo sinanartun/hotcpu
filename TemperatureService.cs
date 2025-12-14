@@ -139,6 +139,23 @@ namespace HotCPU
                 }
                 catch { }
 
+                // Fallback: If no CPU temp found, use the MAX of any available sensor
+                if (mainCpuTemp == null || mainCpuTemp <= 0)
+                {
+                    var maxSensor = allHardwareTemps
+                        .SelectMany(h => h.Sensors)
+                        .OrderByDescending(s => s.Temperature)
+                        .FirstOrDefault();
+                    
+                    if (maxSensor != null)
+                    {
+                        mainCpuTemp = maxSensor.Temperature;
+                        // Find which hardware this sensor belongs to
+                        var parentHw = allHardwareTemps.FirstOrDefault(h => h.Sensors.Contains(maxSensor));
+                        cpuName = parentHw?.Name ?? "System";
+                    }
+                }
+
                 CurrentReading = new TemperatureReading(
                     mainCpuTemp ?? 0,
                     cpuName,

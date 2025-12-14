@@ -28,7 +28,7 @@ namespace HotCPU
 
             // Display text based on settings
             // Display text based on settings
-            string text = temperature.ToString();
+            string text = settings.ShowTrayIconTemperature ? temperature.ToString() : "";
             
             // Font size from settings, adjusted for digit count
             float fontSize = text.Length switch

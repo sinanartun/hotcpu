@@ -20,6 +20,7 @@ namespace HotCPU
         public int CriticalThreshold { get; set; } = 90;
         public bool StartWithWindows { get; set; } = false;
         public int FontSize { get; set; } = 14;
+        public bool ShowTrayIconTemperature { get; set; } = true;
         public List<string> HiddenSensorIds { get; set; } = new();
 
         // Logging settings

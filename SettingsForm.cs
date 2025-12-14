@@ -46,6 +46,7 @@ namespace HotCPU
         private NumericUpDown _hotThresholdNum = null!;
         private NumericUpDown _criticalThresholdNum = null!;
         private CheckBox _startWithWindowsCheck = null!;
+        private CheckBox _showTrayTempCheck = null!;
         private ComboBox _fontSizeCombo = null!;
         private CheckBox _useGradientCheck = null!;
         private Button _coolColorBtn = null!;
@@ -298,6 +299,14 @@ namespace HotCPU
             page.Controls.Add(_startWithWindowsCheck);
             y += 30;
 
+            _startWithWindowsCheck = new CheckBox { Text = "Start with Windows", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
+            page.Controls.Add(_startWithWindowsCheck);
+            y += 30;
+
+            _showTrayTempCheck = new CheckBox { Text = "Show Temperature on Tray Icon", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
+            page.Controls.Add(_showTrayTempCheck);
+            y += 30;
+
         }
 
         private void BuildColorsPanel(Panel page)
@@ -522,7 +531,7 @@ namespace HotCPU
             };
 
             _startWithWindowsCheck.Checked = _settings.StartWithWindows;
-            _startWithWindowsCheck.Checked = _settings.StartWithWindows;
+            _showTrayTempCheck.Checked = _settings.ShowTrayIconTemperature;
             
             // Colors
             _useGradientCheck.Checked = _settings.UseGradientColors;
@@ -591,7 +600,7 @@ namespace HotCPU
             };
 
             _settings.StartWithWindows = _startWithWindowsCheck.Checked;
-            _settings.StartWithWindows = _startWithWindowsCheck.Checked;
+            _settings.ShowTrayIconTemperature = _showTrayTempCheck.Checked;
             _settings.UseGradientColors = _useGradientCheck.Checked;
 
             _settings.SetCoolColor(_coolColorBtn.BackColor);

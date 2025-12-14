@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "fpQ0iLh9Wt8=",
+  "dgSpecHash": "no7WwzNHyU0=",
   "success": true,
-  "projectFilePath": "C:\\projects\\hotcpu\\HotCPU.csproj",
+  "projectFilePath": "c:\\projects\\hotcpu\\HotCPU.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\sinan\\.nuget\\packages\\excss\\4.2.3\\excss.4.2.3.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\hidsharp\\2.1.0\\hidsharp.2.1.0.nupkg.sha512",
