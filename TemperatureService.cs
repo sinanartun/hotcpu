@@ -139,6 +139,15 @@ namespace HotCPU
                 }
                 catch { }
 
+                // === CIMv2 Thermal Zone Information (Standard User Friendly) ===
+                try
+                {
+                    var cimTemps = GetCimTemperatures();
+                    if (cimTemps.Sensors.Any())
+                        allHardwareTemps.Add(cimTemps);
+                }
+                catch { }
+
                 // Fallback: If no CPU temp found, use the MAX of any available sensor
                 if (mainCpuTemp == null || mainCpuTemp <= 0)
                 {
@@ -378,6 +387,52 @@ namespace HotCPU
             catch { }
 
             return diskTemps;
+        }
+
+        private HardwareTemps GetCimTemperatures()
+        {
+            var cimTemps = new HardwareTemps("Motherboard / ACPI (CIM)", "🌡️", "WMI_CIM");
+
+            try
+            {
+                // Win32_PerfFormattedData_Counters_ThermalZoneInformation
+                // Accessible to standard users usually
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\CIMv2",
+                    "SELECT Name, Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation WHERE Temperature > 0");
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    try
+                    {
+                        var tempKelvin = Convert.ToDouble(obj["Temperature"]);
+                        // Some implementations use raw Kelvin, others might be already Celsius or scaled
+                        // Standard WMI Thermal Zone is tenths of Kelvin usually, but PerfCounters can be different.
+                        // However, Win32_PerfFormattedData_Counters_ThermalZoneInformation often mirrors MSAcpi_ThermalZoneTemperature.
+                        // Let's assume K for safety if > 200, otherwise C.
+                        
+                        float tempCelsius = (float)tempKelvin; 
+                        
+                        // If it's huge, it's likely Kelvin
+                        if (tempCelsius > 200)
+                            tempCelsius = (float)(tempKelvin - 273.15);
+                            
+                        // Sanity check
+                        if (tempCelsius < -50 || tempCelsius > 200) continue;
+
+                        var name = obj["Name"]?.ToString() ?? "Thermal Zone";
+                        
+                        var id = $"WMI_CIM_{name}";
+                        UpdateHistory(id, tempCelsius);
+
+                        cimTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return cimTemps;
         }
 
         private float? GetMainCpuTemp(List<SensorTemp> sensors)
