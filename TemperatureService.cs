@@ -620,5 +620,5 @@ namespace HotCPU
         public int RoundedTemp => (int)Math.Round(Temperature);
     }
 
-    internal enum TemperatureLevel { Cool, Warm, Hot, Critical }
+    public enum TemperatureLevel { Cool, Warm, Hot, Critical }
 }
