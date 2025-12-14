@@ -22,6 +22,7 @@ namespace HotCPU
         public int FontSize { get; set; } = 14;
         public bool ShowTrayIconTemperature { get; set; } = true;
         public List<string> HiddenSensorIds { get; set; } = new();
+        public List<string> TraySensorIds { get; set; } = new();
 
         // Logging settings
         public bool LogEnabled { get; set; } = false;
