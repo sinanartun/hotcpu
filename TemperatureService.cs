@@ -173,7 +173,7 @@ namespace HotCPU
                         UpdateHistory(simId, maxSensor.Temperature);
                         
                         simCpu.Sensors.Add(new SensorTemp(
-                            "Core (Estimated)", 
+                            "Core", 
                             maxSensor.Temperature, 
                             GetHistory(simId), 
                             simId));

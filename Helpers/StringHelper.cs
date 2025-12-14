@@ -18,8 +18,8 @@ namespace HotCPU.Helpers
             if (string.IsNullOrWhiteSpace(name)) return name;
 
             // 1. Remove Trademarks (TM, R, etc)
-            // Regex handles: (TM), (R), (C), and symbols
-            name = Regex.Replace(name, @"\s*[\(\[]?(TM|R|C|®|™|©)[\)\]]?", "", RegexOptions.IgnoreCase);
+            // Fix: Require brackets for text versions to avoid stripping letters from words like "Ryzen" or "Core"
+            name = Regex.Replace(name, @"\s*(\((TM|R|C)\)|\[(TM|R|C)\]|®|™|©)", "", RegexOptions.IgnoreCase);
 
             // 2. Remove "Processor" suffix
             name = Regex.Replace(name, @"\s+Processor", "", RegexOptions.IgnoreCase);

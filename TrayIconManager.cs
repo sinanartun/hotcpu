@@ -131,16 +131,13 @@ namespace HotCPU
 
         private void ShowSettings()
         {
-            var sensors = new List<SensorTemp>();
+            var hardware = new List<HardwareTemps>();
             if (_temperatureService.CurrentReading != null)
             {
-                foreach (var hw in _temperatureService.CurrentReading.AllTemps)
-                {
-                    sensors.AddRange(hw.Sensors);
-                }
+                hardware = _temperatureService.CurrentReading.AllTemps;
             }
 
-            var form = new SettingsForm(_settings, OnSettingsChanged, sensors, _temperatureService);
+            var form = new SettingsForm(_settings, OnSettingsChanged, hardware, _temperatureService);
             form.ShowDialog();
         }
 

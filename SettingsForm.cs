@@ -27,7 +27,7 @@ namespace HotCPU
 
         // Original Fields
         private CheckedListBox _sensorsCheckList = null!;
-        private readonly List<SensorTemp> _availableSensors;
+        private readonly List<HardwareTemps> _availableHardware;
 
         // Logging Controls
         private Button _btnBrowseLog = null!;
@@ -60,11 +60,11 @@ namespace HotCPU
         private readonly TemperatureService? _tempService;
         private System.Windows.Forms.Timer? _refreshTimer;
 
-        public SettingsForm(AppSettings settings, Action onSettingsChanged, List<SensorTemp> availableSensors, TemperatureService? tempService = null)
+        public SettingsForm(AppSettings settings, Action onSettingsChanged, List<HardwareTemps> availableHardware, TemperatureService? tempService = null)
         {
             _settings = settings;
             _onSettingsChanged = onSettingsChanged;
-            _availableSensors = availableSensors;
+            _availableHardware = availableHardware;
             _tempService = tempService;
             
             // We can keep double buffering for smoothness, but no need for heavy composition if no bg image
@@ -543,10 +543,14 @@ namespace HotCPU
 
             // Sensors
             _sensorsCheckList.Items.Clear();
-            foreach (var sensor in _availableSensors)
+            foreach (var hw in _availableHardware)
             {
-                bool isVisible = !_settings.HiddenSensorIds.Contains(sensor.Identifier);
-                _sensorsCheckList.Items.Add(new SensorItem(sensor.Name, sensor.Identifier, sensor.Temperature), isVisible);
+                foreach (var sensor in hw.Sensors)
+                {
+                    bool isVisible = !_settings.HiddenSensorIds.Contains(sensor.Identifier);
+                    string displayName = $"{hw.Name} - {sensor.Name}";
+                    _sensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isVisible);
+                }
             }
 
             // Logging
@@ -560,10 +564,14 @@ namespace HotCPU
             _chkLogMax.Checked = _settings.LogMax;
 
             _logSensorsCheckList.Items.Clear();
-            foreach (var sensor in _availableSensors)
+            foreach (var hw in _availableHardware)
             {
-                bool isLogged = _settings.LogSensorIds.Contains(sensor.Identifier);
-                _logSensorsCheckList.Items.Add(new SensorItem(sensor.Name, sensor.Identifier, sensor.Temperature), isLogged);
+                foreach (var sensor in hw.Sensors)
+                {
+                    bool isLogged = _settings.LogSensorIds.Contains(sensor.Identifier);
+                    string displayName = $"{hw.Name} - {sensor.Name}";
+                    _logSensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isLogged);
+                }
             }
         }
         
