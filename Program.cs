@@ -27,6 +27,7 @@ namespace HotCPU
             try
             {
                 ApplicationConfiguration.Initialize();
+                Application.Run(new SplashForm());
                 Application.Run(new TrayApplicationContext());
             }
             finally
