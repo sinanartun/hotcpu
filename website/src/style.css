@@ -51,7 +51,7 @@ body {
   font-family: var(--font-main);
   background-color: var(--bg-color);
   background-image:
-    radial-gradient(circle at 15% 50%, rgba(244, 63, 94, 0.08), transparent 25%),
+    radial-gradient(circle at 15% 50%, rgba(0, 122, 204, 0.08), transparent 25%),
     radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.08), transparent 25%);
   color: var(--text-color);
   line-height: 1.6;
@@ -128,7 +128,7 @@ nav {
   font-size: 3.5rem;
   font-weight: 800;
   margin-bottom: 1.5rem;
-  background: linear-gradient(45deg, var(--primary-color), #fb7185);
+  background: linear-gradient(45deg, var(--primary-color), #38bdf8);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -155,7 +155,7 @@ nav {
 .floating-icon {
   width: 300px;
   height: auto;
-  filter: drop-shadow(0 0 20px rgba(244, 63, 94, 0.3));
+  filter: drop-shadow(0 0 20px rgba(0, 122, 204, 0.3));
   animation: float 6s ease-in-out infinite;
 }
 
@@ -186,7 +186,7 @@ nav {
 .btn.primary {
   background: var(--primary-color);
   color: white;
-  box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 122, 204, 0.4);
 }
 
 .btn.secondary {
@@ -197,7 +197,7 @@ nav {
 
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 122, 204, 0.6);
 }
 
 .btn.large {
@@ -252,7 +252,7 @@ nav {
 .download-card {
   max-width: 800px;
   margin: 0 auto;
-  background: linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(56, 189, 248, 0.1));
+  background: linear-gradient(135deg, rgba(0, 122, 204, 0.1), rgba(56, 189, 248, 0.1));
   padding: 3rem;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
