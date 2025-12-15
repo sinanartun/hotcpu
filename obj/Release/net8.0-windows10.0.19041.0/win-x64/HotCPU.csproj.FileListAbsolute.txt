@@ -36,3 +36,7 @@ C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Square3
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Square44x44Logo.png
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\StoreLogo.png
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Wide310x150Logo.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\AppIcon.ico
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\LogoDark256.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\LogoLight256.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\source\logo.xcf
