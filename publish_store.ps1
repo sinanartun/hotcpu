@@ -8,7 +8,7 @@ dotnet restore
 
 Write-Host "Publishing Store Package (MSIX)..." -ForegroundColor Cyan
 # MSIX usually prefers self-contained
-dotnet publish -c Release -r win-x64 --self-contained true -p:AppxPackageSigningEnabled=true -p:PackageCertificateKeyFile=HotCPU_Key.pfx -p:AppxBundle=Never
+dotnet publish -c Release -r win-x64 --self-contained true -p:GenerateAppxPackageOnBuild=true -p:UapAppxPackageBuildMode=StoreUpload -p:AppxPackageSigningEnabled=false -p:AppxBundle=Always
 
 Write-Host "Build Complete!" -ForegroundColor Green
 Write-Host "Location: bin\Release\net8.0-windows10.0.19041.0\win-x64\AppPackages\" -ForegroundColor Yellow
