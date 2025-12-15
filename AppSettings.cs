@@ -23,6 +23,7 @@ namespace HotCPU
         public bool ShowTrayIconTemperature { get; set; } = true;
         public List<string> HiddenSensorIds { get; set; } = new();
         public List<string> TraySensorIds { get; set; } = new();
+        public string? Language { get; set; }
 
         // Logging settings
         public bool LogEnabled { get; set; } = false;

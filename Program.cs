@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Windows.Forms;
+using HotCPU.Localization;
 
 namespace HotCPU
 {
@@ -24,16 +26,41 @@ namespace HotCPU
                 return;
             }
 
+            AppSettings settings = AppSettings.Load();
+            ApplyCulture(settings);
+
             try
             {
                 ApplicationConfiguration.Initialize();
                 Application.Run(new SplashForm());
-                Application.Run(new TrayApplicationContext());
+                Application.Run(new TrayApplicationContext(settings));
             }
             finally
             {
                 _mutex?.ReleaseMutex();
                 _mutex?.Dispose();
+            }
+        }
+
+        private static void ApplyCulture(AppSettings settings)
+        {
+            var fallback = CultureInfo.CurrentUICulture;
+            var cultureName = string.IsNullOrWhiteSpace(settings.Language)
+                ? fallback.Name
+                : settings.Language;
+
+            try
+            {
+                var culture = CultureInfo.GetCultureInfo(cultureName);
+                CultureInfo.CurrentCulture = culture;
+                CultureInfo.CurrentUICulture = culture;
+                CultureInfo.DefaultThreadCurrentCulture = culture;
+                CultureInfo.DefaultThreadCurrentUICulture = culture;
+                LocalizationService.SetCulture(culture);
+            }
+            catch (CultureNotFoundException)
+            {
+                LocalizationService.SetCulture(fallback);
             }
         }
     }
@@ -48,9 +75,9 @@ namespace HotCPU
         private readonly LoggerService _loggerService;
         private readonly TrayIconManager _trayIconManager;
 
-        public TrayApplicationContext()
+        public TrayApplicationContext(AppSettings settings)
         {
-            _settings = AppSettings.Load();
+            _settings = settings;
             _temperatureService = new TemperatureService(_settings);
             _loggerService = new LoggerService(_temperatureService, _settings);
             _trayIconManager = new TrayIconManager(_temperatureService, _loggerService, _settings, ExitApplication);

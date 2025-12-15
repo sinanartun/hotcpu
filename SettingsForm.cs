@@ -1,9 +1,10 @@
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Windows.Forms;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Globalization;
+using System.Linq;
+using System.Windows.Forms;
+using HotCPU.Localization;
 
 namespace HotCPU
 {
@@ -58,6 +59,9 @@ namespace HotCPU
         private Button _criticalColorBtn = null!;
         private Button _saveButton = null!;
         private Button _cancelButton = null!;
+        private ComboBox _languageCombo = null!;
+        private Label _languageInfoLabel = null!;
+        private List<LanguageOption> _languageOptions = new();
 
         // Live Updates
         private readonly TemperatureService? _tempService;
@@ -132,7 +136,7 @@ namespace HotCPU
 
         private void InitializeComponent()
         {
-            Text = "HotCPU Settings";
+            Text = S("SettingsForm_Title");
             Size = new Size(600, 600);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -144,17 +148,9 @@ namespace HotCPU
             {
                 Dock = DockStyle.Top,
                 Height = 40,
-                BackColor = Color.FromArgb(200, 40, 40, 40), // Semi-transparent dark
+                BackColor = Color.FromArgb(200, 40, 40, 40),
                 Padding = new Padding(5)
             };
-            
-            _btnGeneral = CreateNavButton("General", navPanel);
-            _btnColors = CreateNavButton("Colors", navPanel);
-            _btnSensors = CreateNavButton("Sensors", navPanel);
-            _btnSensors = CreateNavButton("Sensors", navPanel);
-            _btnTray = CreateNavButton("Tray Icon", navPanel);
-            _btnLogging = CreateNavButton("Logging", navPanel);
-
             Controls.Add(navPanel);
 
             // === Content Panel ===
@@ -166,7 +162,7 @@ namespace HotCPU
             };
             _contentPanel.Paint += (s, e) =>
             {
-                using var brush = new SolidBrush(Color.FromArgb(150, 255, 255, 255)); 
+                using var brush = new SolidBrush(Color.FromArgb(150, 255, 255, 255));
                 e.Graphics.FillRectangle(brush, _contentPanel.ClientRectangle);
             };
             Controls.Add(_contentPanel);
@@ -174,12 +170,9 @@ namespace HotCPU
             // Create Content Views
             _panelGeneral = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildGeneralPanel(_panelGeneral);
-            
+
             _panelColors = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildColorsPanel(_panelColors);
-
-            _panelSensors = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
-            BuildSensorsPanel(_panelSensors);
 
             _panelSensors = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildSensorsPanel(_panelSensors);
@@ -190,18 +183,23 @@ namespace HotCPU
             _panelLogging = new BufferedPanel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
             BuildLoggingPanel(_panelLogging);
 
+            _btnGeneral = CreateNavButton("SettingsForm_Tab_General", navPanel, _panelGeneral);
+            _btnColors = CreateNavButton("SettingsForm_Tab_Colors", navPanel, _panelColors);
+            _btnSensors = CreateNavButton("SettingsForm_Tab_Sensors", navPanel, _panelSensors);
+            _btnTray = CreateNavButton("SettingsForm_Tab_Tray", navPanel, _panelTray);
+            _btnLogging = CreateNavButton("SettingsForm_Tab_Logging", navPanel, _panelLogging);
+
             // Default View
             ShowPanel(_panelGeneral);
 
             // Bottom Buttons
-            var y = Size.Height - 80; // Approximate bottom area
+            var y = Size.Height - 80;
             var btnWidth = 80;
             var padding = 20;
 
-            // Save (Far Right)
             _saveButton = new Button
             {
-                Text = "Save",
+                Text = S("Common_Save"),
                 Size = new Size(btnWidth, 30),
                 Location = new Point(ClientSize.Width - btnWidth - padding, y),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
@@ -209,11 +207,10 @@ namespace HotCPU
             };
             _saveButton.Click += SaveButton_Click;
             Controls.Add(_saveButton);
-            
-            // Cancel (Left of Save)
+
             _cancelButton = new Button
             {
-                Text = "Cancel",
+                Text = S("Common_Cancel"),
                 Size = new Size(btnWidth, 30),
                 Location = new Point(_saveButton.Left - btnWidth - 10, y),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
@@ -223,11 +220,11 @@ namespace HotCPU
             Controls.Add(_cancelButton);
         }
 
-        private Button CreateNavButton(string text, Panel parent)
+        private Button CreateNavButton(string resourceKey, Panel parent, Panel targetPanel)
         {
             var btn = new Button
             {
-                Text = text,
+                Text = S(resourceKey),
                 Size = new Size(90, 30),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(60, 60, 60),
@@ -236,15 +233,7 @@ namespace HotCPU
                 Margin = new Padding(5, 0, 5, 0)
             };
             btn.FlatAppearance.BorderSize = 0;
-            btn.Click += (s, e) => 
-            {
-                if (text == "General") ShowPanel(_panelGeneral);
-                else if (text == "Colors") ShowPanel(_panelColors);
-                else if (text == "Sensors") ShowPanel(_panelSensors);
-                else if (text == "Sensors") ShowPanel(_panelSensors);
-                else if (text == "Tray Icon") ShowPanel(_panelTray);
-                else if (text == "Logging") ShowPanel(_panelLogging);
-            };
+            btn.Click += (s, e) => ShowPanel(targetPanel);
             parent.Controls.Add(btn);
             return btn;
         }
@@ -259,7 +248,6 @@ namespace HotCPU
             if (panel == _panelGeneral) HighlightButton(_btnGeneral);
             else if (panel == _panelColors) HighlightButton(_btnColors);
             else if (panel == _panelSensors) HighlightButton(_btnSensors);
-            else if (panel == _panelSensors) HighlightButton(_btnSensors);
             else if (panel == _panelTray) HighlightButton(_btnTray);
             else if (panel == _panelLogging) HighlightButton(_btnLogging);
         }
@@ -269,7 +257,6 @@ namespace HotCPU
             var c = Color.FromArgb(60, 60, 60);
             _btnGeneral.BackColor = c;
             _btnColors.BackColor = c;
-            _btnSensors.BackColor = c;
             _btnSensors.BackColor = c;
             _btnTray.BackColor = c;
             _btnLogging.BackColor = c;
@@ -282,48 +269,76 @@ namespace HotCPU
 
         private void BuildGeneralPanel(Panel page)
         {
-            int y = 20; 
+            int y = 20;
             int x = 20;
 
-            // Refresh Interval
-            AddLabel(page, "Refresh Interval:", x, y);
+            AddLabel(page, S("SettingsForm_General_RefreshInterval"), x, y);
             _refreshIntervalCombo = CreateComboBox(page, 170, y - 3, 160);
-            _refreshIntervalCombo.Items.AddRange(new object[] { "0.5 seconds", "1 second", "2 seconds", "5 seconds" });
+            _refreshIntervalCombo.Items.AddRange(new object[]
+            {
+                S("SettingsForm_General_Interval_05"),
+                S("SettingsForm_General_Interval_1"),
+                S("SettingsForm_General_Interval_2"),
+                S("SettingsForm_General_Interval_5")
+            });
             y += 40;
 
-            // Thresholds
-            AddLabel(page, "Warm Threshold (°C):", x, y);
+            AddLabel(page, S("SettingsForm_General_WarmThreshold"), x, y);
             _warmThresholdNum = CreateNumericUpDown(page, 170, y - 3, 30, 100);
             y += 35;
 
-            AddLabel(page, "Hot Threshold (°C):", x, y);
+            AddLabel(page, S("SettingsForm_General_HotThreshold"), x, y);
             _hotThresholdNum = CreateNumericUpDown(page, 170, y - 3, 30, 100);
             y += 35;
 
-            AddLabel(page, "Critical Threshold (°C):", x, y);
+            AddLabel(page, S("SettingsForm_General_CriticalThreshold"), x, y);
             _criticalThresholdNum = CreateNumericUpDown(page, 170, y - 3, 30, 120);
             y += 40;
 
-            // Font
-            AddLabel(page, "Font Size:", x, y);
+            AddLabel(page, S("SettingsForm_General_FontSize"), x, y);
             _fontSizeCombo = CreateComboBox(page, 170, y - 3, 160);
-            _fontSizeCombo.Items.AddRange(new object[] { "Small (10px)", "Medium (12px)", "Large (14px)" });
+            _fontSizeCombo.Items.AddRange(new object[]
+            {
+                S("SettingsForm_General_FontSmall"),
+                S("SettingsForm_General_FontMedium"),
+                S("SettingsForm_General_FontLarge")
+            });
             y += 40;
 
-            // Checks
-            
-            _startWithWindowsCheck = new CheckBox { Text = "Start with Windows", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
+            AddLabel(page, S("SettingsForm_General_Language"), x, y);
+            _languageCombo = CreateComboBox(page, 170, y - 3, 200);
+            PopulateLanguageCombo();
+            y += 40;
+
+            _languageInfoLabel = new Label
+            {
+                Text = S("SettingsForm_General_LanguageRestart"),
+                Location = new Point(x + 5, y),
+                AutoSize = true,
+                ForeColor = Color.DimGray
+            };
+            page.Controls.Add(_languageInfoLabel);
+            y += 30;
+
+            _startWithWindowsCheck = new CheckBox
+            {
+                Text = S("SettingsForm_General_StartWithWindows"),
+                Location = new Point(x, y),
+                AutoSize = true,
+                UseVisualStyleBackColor = true
+            };
             page.Controls.Add(_startWithWindowsCheck);
             y += 30;
 
-            _startWithWindowsCheck = new CheckBox { Text = "Start with Windows", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
-            page.Controls.Add(_startWithWindowsCheck);
-            y += 30;
-
-            _showTrayTempCheck = new CheckBox { Text = "Show Temperature on Tray Icon", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
+            _showTrayTempCheck = new CheckBox
+            {
+                Text = S("SettingsForm_General_ShowTrayTemperature"),
+                Location = new Point(x, y),
+                AutoSize = true,
+                UseVisualStyleBackColor = true
+            };
             page.Controls.Add(_showTrayTempCheck);
             y += 30;
-
         }
 
         private void BuildColorsPanel(Panel page)
@@ -331,24 +346,30 @@ namespace HotCPU
             int y = 20;
             int x = 20;
 
-            _useGradientCheck = new CheckBox { Text = "Use gradient colors", Location = new Point(x, y), AutoSize = true, UseVisualStyleBackColor = true };
+            _useGradientCheck = new CheckBox
+            {
+                Text = S("SettingsForm_Colors_UseGradients"),
+                Location = new Point(x, y),
+                AutoSize = true,
+                UseVisualStyleBackColor = true
+            };
             _useGradientCheck.CheckedChanged += (s, e) => UpdateColorButtonsEnabled();
             page.Controls.Add(_useGradientCheck);
             y += 40;
 
-            AddLabel(page, "Cool Color:", x, y);
+            AddLabel(page, S("SettingsForm_Colors_Cool"), x, y);
             _coolColorBtn = CreateColorButton(page, 150, y - 3, Color.White);
             y += 40;
 
-            AddLabel(page, "Warm Color:", x, y);
+            AddLabel(page, S("SettingsForm_Colors_Warm"), x, y);
             _warmColorBtn = CreateColorButton(page, 150, y - 3, Color.Orange);
             y += 40;
 
-            AddLabel(page, "Hot Color:", x, y);
+            AddLabel(page, S("SettingsForm_Colors_Hot"), x, y);
             _hotColorBtn = CreateColorButton(page, 150, y - 3, Color.OrangeRed);
             y += 40;
 
-            AddLabel(page, "Critical Color:", x, y);
+            AddLabel(page, S("SettingsForm_Colors_Critical"), x, y);
             _criticalColorBtn = CreateColorButton(page, 150, y - 3, Color.Red);
             y += 40;
         }
@@ -357,7 +378,7 @@ namespace HotCPU
         {
             var label = new Label
             {
-                Text = "Select sensors to show in tooltip:",
+                Text = S("SettingsForm_Sensors_Title"),
                 Location = new Point(10, 10),
                 AutoSize = true
             };
@@ -365,7 +386,7 @@ namespace HotCPU
 
             var chkSelectAll = new CheckBox 
             { 
-                Text = "Select All", 
+                Text = S("SettingsForm_SelectAll"),
                 Location = new Point(450, 8), 
                 AutoSize = true,
                 UseVisualStyleBackColor = true
@@ -391,7 +412,7 @@ namespace HotCPU
         {
             var label = new Label
             {
-                Text = "Select sensors to show in system tray:",
+                Text = S("SettingsForm_Tray_Title"),
                 Location = new Point(10, 10),
                 AutoSize = true
             };
@@ -399,7 +420,7 @@ namespace HotCPU
 
             var chkSelectAll = new CheckBox 
             { 
-                Text = "Select All", 
+                Text = S("SettingsForm_SelectAll"),
                 Location = new Point(450, 8), 
                 AutoSize = true,
                 UseVisualStyleBackColor = true
@@ -426,17 +447,17 @@ namespace HotCPU
             int y = 20;
             int x = 20;
 
-            _chkEnableLogging = new CheckBox 
-            { 
-                Text = "Enable Logging", 
-                Location = new Point(x, y), 
-                AutoSize = true, 
-                UseVisualStyleBackColor = true 
+            _chkEnableLogging = new CheckBox
+            {
+                Text = S("SettingsForm_Logging_Enable"),
+                Location = new Point(x, y),
+                AutoSize = true,
+                UseVisualStyleBackColor = true
             };
             page.Controls.Add(_chkEnableLogging);
             y += 40;
 
-            AddLabel(page, "Log Path:", x, y);
+            AddLabel(page, S("SettingsForm_Logging_LogPath"), x, y);
             y += 25;
             _txtLogPath = new TextBox
             {
@@ -455,32 +476,37 @@ namespace HotCPU
             };
             _btnBrowseLog.Click += (s, e) => 
             {
-                using var dlg = new SaveFileDialog { Filter = "CSV Files|*.csv|JSON Files|*.json|Unstructured Text|*.txt" };
+                using var dlg = new SaveFileDialog { Filter = S("SettingsForm_Logging_BrowseFilter") };
                 if (dlg.ShowDialog() == DialogResult.OK)
                     _txtLogPath.Text = dlg.FileName;
             };
             page.Controls.Add(_btnBrowseLog);
             y += 40;
 
-            AddLabel(page, "Interval (seconds):", x, y);
+            AddLabel(page, S("SettingsForm_Logging_Interval"), x, y);
             _numLogInterval = CreateNumericUpDown(page, 150, y - 3, 1, 3600);
             y += 35;
 
-            AddLabel(page, "Format:", x, y);
+            AddLabel(page, S("SettingsForm_Logging_Format"), x, y);
             _cmbLogFormat = CreateComboBox(page, 150, y - 3, 100);
-            _cmbLogFormat.Items.AddRange(new object[] { "CSV", "JSON", "TXT" });
+            _cmbLogFormat.Items.AddRange(new object[]
+            {
+                S("SettingsForm_Logging_Format_Csv"),
+                S("SettingsForm_Logging_Format_Json"),
+                S("SettingsForm_Logging_Format_Txt")
+            });
             y += 40;
 
             // Stats
             var grpStats = new GroupBox
             {
-                Text = "Statistics",
+                Text = S("SettingsForm_Logging_Stats"),
                 Location = new Point(x, y),
                 Size = new Size(340, 50)
             };
-            _chkLogAvg = new CheckBox { Text = "Avg", Location = new Point(10, 20), AutoSize = true, UseVisualStyleBackColor = true };
-            _chkLogMin = new CheckBox { Text = "Min", Location = new Point(70, 20), AutoSize = true, UseVisualStyleBackColor = true };
-            _chkLogMax = new CheckBox { Text = "Max", Location = new Point(130, 20), AutoSize = true, UseVisualStyleBackColor = true };
+            _chkLogAvg = new CheckBox { Text = S("SettingsForm_Logging_Stats_Avg"), Location = new Point(10, 20), AutoSize = true, UseVisualStyleBackColor = true };
+            _chkLogMin = new CheckBox { Text = S("SettingsForm_Logging_Stats_Min"), Location = new Point(70, 20), AutoSize = true, UseVisualStyleBackColor = true };
+            _chkLogMax = new CheckBox { Text = S("SettingsForm_Logging_Stats_Max"), Location = new Point(130, 20), AutoSize = true, UseVisualStyleBackColor = true };
             grpStats.Controls.Add(_chkLogAvg);
             grpStats.Controls.Add(_chkLogMin);
             grpStats.Controls.Add(_chkLogMax);
@@ -488,11 +514,11 @@ namespace HotCPU
             y += 60;
 
             // Sensors
-            AddLabel(page, "Select sensors to log:", x, y);
+            AddLabel(page, S("SettingsForm_Logging_SelectSensors"), x, y);
             
             var chkSelectAll = new CheckBox 
             { 
-                Text = "Select All", 
+                Text = S("SettingsForm_SelectAll"), 
                 Location = new Point(x + 400, y - 2), 
                 AutoSize = true,
                 UseVisualStyleBackColor = true
@@ -565,6 +591,32 @@ namespace HotCPU
             _criticalColorBtn.Enabled = enabled;
         }
 
+        private void PopulateLanguageCombo()
+        {
+            var options = new List<LanguageOption>
+            {
+                new LanguageOption(S("SettingsForm_General_LanguageAuto"), null)
+            };
+
+            var cultures = CultureInfo
+                .GetCultures(CultureTypes.SpecificCultures | CultureTypes.NeutralCultures)
+                .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+                .GroupBy(c => c.Name)
+                .Select(g => g.First())
+                .OrderBy(c => c.EnglishName, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var culture in cultures)
+            {
+                var displayName = $"{culture.EnglishName} [{culture.Name}]";
+                options.Add(new LanguageOption(displayName, culture.Name));
+            }
+
+            _languageOptions = options;
+            _languageCombo.DataSource = _languageOptions;
+            _languageCombo.DisplayMember = nameof(LanguageOption.DisplayName);
+            _languageCombo.ValueMember = nameof(LanguageOption.CultureCode);
+        }
+
         private void LoadSettings()
         {
             _refreshIntervalCombo.SelectedIndex = _settings.RefreshIntervalMs switch
@@ -580,6 +632,23 @@ namespace HotCPU
             {
                 10 => 0, 12 => 1, 14 => 2, _ => 2
             };
+
+            if (_languageOptions.Count == 0)
+            {
+                PopulateLanguageCombo();
+            }
+            var languageValue = _settings.Language;
+            var languageIndex = 0;
+            if (!string.IsNullOrWhiteSpace(languageValue))
+            {
+                languageIndex = _languageOptions.FindIndex(option =>
+                    string.Equals(option.CultureCode, languageValue, StringComparison.OrdinalIgnoreCase));
+                if (languageIndex < 0)
+                {
+                    languageIndex = 0;
+                }
+            }
+            _languageCombo.SelectedIndex = languageIndex;
 
             _startWithWindowsCheck.Checked = _settings.StartWithWindows;
             _showTrayTempCheck.Checked = _settings.ShowTrayIconTemperature;
@@ -638,13 +707,33 @@ namespace HotCPU
             }
         }
         
+        private static string S(string key) => LocalizationService.GetString(key);
+
         private class SensorItem
         {
             public string Name { get; }
             public string Id { get; }
             public float Temperature { get; set; }
             public SensorItem(string name, string id, float temp) { Name = name; Id = id; Temperature = temp; }
-            public override string ToString() => $"{Name} ({(int)Math.Round(Temperature)}°C)";
+            public override string ToString()
+            {
+                var roundedTemp = (int)Math.Round(Temperature);
+                return LocalizationService.Format("SensorItem_Format", Name, roundedTemp);
+            }
+        }
+
+        private sealed class LanguageOption
+        {
+            public LanguageOption(string displayName, string? cultureCode)
+            {
+                DisplayName = displayName;
+                CultureCode = cultureCode;
+            }
+
+            public string DisplayName { get; }
+            public string? CultureCode { get; }
+
+            public override string ToString() => DisplayName;
         }
 
         private async void SaveButton_Click(object? sender, EventArgs e)
@@ -669,6 +758,11 @@ namespace HotCPU
                 2 => 14,
                 _ => 14
             };
+
+            if (_languageCombo.SelectedItem is LanguageOption selectedLanguage)
+            {
+                _settings.Language = selectedLanguage.CultureCode;
+            }
 
             _settings.StartWithWindows = _startWithWindowsCheck.Checked;
             _settings.ShowTrayIconTemperature = _showTrayTempCheck.Checked;
