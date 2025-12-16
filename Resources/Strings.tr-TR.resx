@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsForm_Title" xml:space="preserve">
+    <value>HotCPU Ayarları</value>
+  </data>
+  <data name="SettingsForm_Tab_General" xml:space="preserve">
+    <value>Genel</value>
+  </data>
+  <data name="SettingsForm_Tab_Colors" xml:space="preserve">
+    <value>Renkler</value>
+  </data>
+  <data name="SettingsForm_Tab_Sensors" xml:space="preserve">
+    <value>Sensörler</value>
+  </data>
+  <data name="SettingsForm_Tab_Tray" xml:space="preserve">
+    <value>Sistem Tepsisi</value>
+  </data>
+  <data name="SettingsForm_Tab_Logging" xml:space="preserve">
+    <value>Günlük</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Kaydet</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>İptal</value>
+  </data>
+  <data name="SettingsForm_SelectAll" xml:space="preserve">
+    <value>Tümünü Seç</value>
+  </data>
+  <data name="SettingsForm_General_RefreshInterval" xml:space="preserve">
+    <value>Yenileme Aralığı:</value>
+  </data>
+  <data name="SettingsForm_General_Interval_05" xml:space="preserve">
+    <value>0,5 saniye</value>
+  </data>
+  <data name="SettingsForm_General_Interval_1" xml:space="preserve">
+    <value>1 saniye</value>
+  </data>
+  <data name="SettingsForm_General_Interval_2" xml:space="preserve">
+    <value>2 saniye</value>
+  </data>
+  <data name="SettingsForm_General_Interval_5" xml:space="preserve">
+    <value>5 saniye</value>
+  </data>
+  <data name="SettingsForm_General_WarmThreshold" xml:space="preserve">
+    <value>Ilık Eşik (°C):</value>
+  </data>
+  <data name="SettingsForm_General_HotThreshold" xml:space="preserve">
+    <value>Sıcak Eşik (°C):</value>
+  </data>
+  <data name="SettingsForm_General_CriticalThreshold" xml:space="preserve">
+    <value>Kritik Eşik (°C):</value>
+  </data>
+  <data name="SettingsForm_General_FontSize" xml:space="preserve">
+    <value>Yazı Tipi Boyutu:</value>
+  </data>
+  <data name="SettingsForm_General_FontSmall" xml:space="preserve">
+    <value>Küçük (10px)</value>
+  </data>
+  <data name="SettingsForm_General_FontMedium" xml:space="preserve">
+    <value>Orta (12px)</value>
+  </data>
+  <data name="SettingsForm_General_FontLarge" xml:space="preserve">
+    <value>Büyük (14px)</value>
+  </data>
+  <data name="SettingsForm_General_StartWithWindows" xml:space="preserve">
+    <value>Windows ile başlat</value>
+  </data>
+  <data name="SettingsForm_General_ShowTrayTemperature" xml:space="preserve">
+    <value>Tepsi simgesinde sıcaklığı göster</value>
+  </data>
+  <data name="SettingsForm_General_Language" xml:space="preserve">
+    <value>Dil:</value>
+  </data>
+  <data name="SettingsForm_General_LanguageAuto" xml:space="preserve">
+    <value>Windows dilini kullan</value>
+  </data>
+  <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
+    <value>Dil değişikliği yeniden başlattıktan sonra geçerli olur.</value>
+  </data>
+  <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
+    <value>Degrade renkleri kullan</value>
+  </data>
+  <data name="SettingsForm_Colors_Cool" xml:space="preserve">
+    <value>Serin Renk:</value>
+  </data>
+  <data name="SettingsForm_Colors_Warm" xml:space="preserve">
+    <value>Ilık Renk:</value>
+  </data>
+  <data name="SettingsForm_Colors_Hot" xml:space="preserve">
+    <value>Sıcak Renk:</value>
+  </data>
+  <data name="SettingsForm_Colors_Critical" xml:space="preserve">
+    <value>Kritik Renk:</value>
+  </data>
+  <data name="SettingsForm_Sensors_Title" xml:space="preserve">
+    <value>Araç ipucunda gösterilecek sensörleri seçin:</value>
+  </data>
+  <data name="SettingsForm_Tray_Title" xml:space="preserve">
+    <value>Sistem tepsisinde gösterilecek sensörleri seçin:</value>
+  </data>
+  <data name="SettingsForm_Logging_Enable" xml:space="preserve">
+    <value>Günlüklemeyi etkinleştir</value>
+  </data>
+  <data name="SettingsForm_Logging_LogPath" xml:space="preserve">
+    <value>Günlük yolu:</value>
+  </data>
+  <data name="SettingsForm_Logging_BrowseFilter" xml:space="preserve">
+    <value>CSV Dosyaları|*.csv|JSON Dosyaları|*.json|Düz Metin|*.txt</value>
+  </data>
+  <data name="SettingsForm_Logging_Interval" xml:space="preserve">
+    <value>Aralık (saniye):</value>
+  </data>
+  <data name="SettingsForm_Logging_Format" xml:space="preserve">
+    <value>Biçim:</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Csv" xml:space="preserve">
+    <value>CSV</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Json" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Txt" xml:space="preserve">
+    <value>TXT</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats" xml:space="preserve">
+    <value>İstatistikler</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Avg" xml:space="preserve">
+    <value>Ort</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Min" xml:space="preserve">
+    <value>Min</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Max" xml:space="preserve">
+    <value>Maks</value>
+  </data>
+  <data name="SettingsForm_Logging_SelectSensors" xml:space="preserve">
+    <value>Günlüklenecek sensörleri seçin:</value>
+  </data>
+  <data name="SensorItem_Format" xml:space="preserve">
+    <value>{0} ({1}°C)</value>
+  </data>
+</root>

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
 using System.Windows.Forms;
 
 namespace HotCPU
@@ -21,14 +19,6 @@ namespace HotCPU
         private readonly Action _exitAction;
         private readonly ContextMenuStrip _contextMenu;
         private bool _disposed;
-        private TemperatureLevel _lastLevel = TemperatureLevel.Cool;
-
-        // Animation
-        private readonly Image? _animationImage;
-        private readonly System.Windows.Forms.Timer _animationTimer;
-        private int _currentFrame = 0;
-        private int _frameCount = 0;
-        private bool _isAnimating = false;
 
         private readonly HoverInfoForm _hoverForm = new HoverInfoForm();
 
@@ -41,47 +31,10 @@ namespace HotCPU
 
             _contextMenu = CreateContextMenu();
 
-            // Load animation gif (logic unchanged)
-            try
-            {
-                string gifPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tenor.gif");
-                if (File.Exists(gifPath))
-                {
-                    _animationImage = Image.FromFile(gifPath);
-                    if (ImageAnimator.CanAnimate(_animationImage))
-                        _frameCount = _animationImage.GetFrameCount(FrameDimension.Time);
-                }
-                else
-                {
-                     string devPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "tenor.gif");
-                     if (File.Exists(devPath))
-                     {
-                         _animationImage = Image.FromFile(devPath);
-                        if (ImageAnimator.CanAnimate(_animationImage))
-                            _frameCount = _animationImage.GetFrameCount(FrameDimension.Time);
-                     }
-                }
-            }
-            catch { }
-
-            // Setup timer
-            _animationTimer = new System.Windows.Forms.Timer { Interval = 100 };
-            _animationTimer.Tick += OnAnimationTick;
-
             _temperatureService.TemperatureChanged += OnTemperatureChanged;
             
             // Initial update
             UpdateTrayIcons();
-        }
-
-        private void OnAnimationTick(object? sender, EventArgs e)
-        {
-            if (_animationImage == null || !_isAnimating) return;
-            
-            _currentFrame = (_currentFrame + 1) % _frameCount;
-            _animationImage.SelectActiveFrame(FrameDimension.Time, _currentFrame);
-
-            UpdateTrayIcons(_animationImage);
         }
 
         private void OnNotifyIconMouseMove(object? sender, MouseEventArgs e)
@@ -92,6 +45,11 @@ namespace HotCPU
                 _hoverForm.UpdateData(reading);
                 _hoverForm.ShowAtCursor();
             }
+        }
+
+        private void OnNotifyIconDoubleClick(object? sender, EventArgs e)
+        {
+            ShowSettings();
         }
 
         private ContextMenuStrip CreateContextMenu()
@@ -138,31 +96,10 @@ namespace HotCPU
                 return;
             }
 
-            // Simple animation logic: trigger if ANY sensor is critical?
-            // Or just stick to the main Level for now to keep it simple.
-            bool critical = reading.Level == TemperatureLevel.Critical;
-            _lastLevel = reading.Level;
-
-            if (critical && _animationImage != null && _frameCount > 1)
-            {
-                if (!_isAnimating)
-                {
-                    _isAnimating = true;
-                    _animationTimer.Start();
-                }
-            }
-            else
-            {
-                if (_isAnimating)
-                {
-                    _isAnimating = false;
-                    _animationTimer.Stop();
-                }
-                UpdateTrayIcons();
-            }
+            UpdateTrayIcons();
         }
 
-        private void UpdateTrayIcons(Image? bgImage = null)
+        private void UpdateTrayIcons()
         {
             if (_disposed) return;
             var reading = _temperatureService.CurrentReading;
@@ -183,7 +120,10 @@ namespace HotCPU
             {
                 if (_notifyIcons.TryGetValue(key, out var icon))
                 {
+                    icon.DoubleClick -= OnNotifyIconDoubleClick;
+                    icon.MouseMove -= OnNotifyIconMouseMove;
                     icon.Visible = false;
+                    icon.Icon?.Dispose();
                     icon.Dispose();
                     _notifyIcons.Remove(key);
                 }
@@ -203,7 +143,7 @@ namespace HotCPU
                         ContextMenuStrip = _contextMenu,
                         Text = "HotCPU"
                     };
-                    newIcon.DoubleClick += (s, e) => ShowSettings();
+                    newIcon.DoubleClick += OnNotifyIconDoubleClick;
                     newIcon.MouseMove += OnNotifyIconMouseMove;
                     _notifyIcons[id] = newIcon;
                 }
@@ -242,8 +182,7 @@ namespace HotCPU
                     notifyIcon.Icon = TrayIconGenerator.CreateIcon(
                         (int)Math.Round(temp), 
                         level, 
-                        _settings, 
-                        bgImage);
+                        _settings);
                     oldIcon?.Dispose();
                 }
                 catch { }
@@ -258,17 +197,16 @@ namespace HotCPU
         {
             if (_disposed) return;
             _disposed = true;
-            
-            _animationTimer.Stop();
-            _animationTimer.Dispose();
-            _animationImage?.Dispose();
 
             _temperatureService.TemperatureChanged -= OnTemperatureChanged;
             
-            // Dispose all icons
+            // Dispose all icons - unsubscribe events first
             foreach (var icon in _notifyIcons.Values)
             {
+                icon.DoubleClick -= OnNotifyIconDoubleClick;
+                icon.MouseMove -= OnNotifyIconMouseMove;
                 icon.Visible = false;
+                icon.Icon?.Dispose();
                 icon.Dispose();
             }
             _notifyIcons.Clear();

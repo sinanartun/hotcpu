@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsForm_Title" xml:space="preserve">
+    <value>Configurações do HotCPU</value>
+  </data>
+  <data name="SettingsForm_Tab_General" xml:space="preserve">
+    <value>Geral</value>
+  </data>
+  <data name="SettingsForm_Tab_Colors" xml:space="preserve">
+    <value>Cores</value>
+  </data>
+  <data name="SettingsForm_Tab_Sensors" xml:space="preserve">
+    <value>Sensores</value>
+  </data>
+  <data name="SettingsForm_Tab_Tray" xml:space="preserve">
+    <value>Ícone da bandeja</value>
+  </data>
+  <data name="SettingsForm_Tab_Logging" xml:space="preserve">
+    <value>Registro</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Salvar</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="SettingsForm_SelectAll" xml:space="preserve">
+    <value>Selecionar tudo</value>
+  </data>
+  <data name="SettingsForm_General_RefreshInterval" xml:space="preserve">
+    <value>Intervalo de atualização:</value>
+  </data>
+  <data name="SettingsForm_General_Interval_05" xml:space="preserve">
+    <value>0,5 segundo</value>
+  </data>
+  <data name="SettingsForm_General_Interval_1" xml:space="preserve">
+    <value>1 segundo</value>
+  </data>
+  <data name="SettingsForm_General_Interval_2" xml:space="preserve">
+    <value>2 segundos</value>
+  </data>
+  <data name="SettingsForm_General_Interval_5" xml:space="preserve">
+    <value>5 segundos</value>
+  </data>
+  <data name="SettingsForm_General_WarmThreshold" xml:space="preserve">
+    <value>Limite morno (°C):</value>
+  </data>
+  <data name="SettingsForm_General_HotThreshold" xml:space="preserve">
+    <value>Limite quente (°C):</value>
+  </data>
+  <data name="SettingsForm_General_CriticalThreshold" xml:space="preserve">
+    <value>Limite crítico (°C):</value>
+  </data>
+  <data name="SettingsForm_General_FontSize" xml:space="preserve">
+    <value>Tamanho da fonte:</value>
+  </data>
+  <data name="SettingsForm_General_FontSmall" xml:space="preserve">
+    <value>Pequena (10px)</value>
+  </data>
+  <data name="SettingsForm_General_FontMedium" xml:space="preserve">
+    <value>Média (12px)</value>
+  </data>
+  <data name="SettingsForm_General_FontLarge" xml:space="preserve">
+    <value>Grande (14px)</value>
+  </data>
+  <data name="SettingsForm_General_StartWithWindows" xml:space="preserve">
+    <value>Iniciar com o Windows</value>
+  </data>
+  <data name="SettingsForm_General_ShowTrayTemperature" xml:space="preserve">
+    <value>Mostrar temperatura no ícone da bandeja</value>
+  </data>
+  <data name="SettingsForm_General_Language" xml:space="preserve">
+    <value>Idioma:</value>
+  </data>
+  <data name="SettingsForm_General_LanguageAuto" xml:space="preserve">
+    <value>Usar idioma do Windows</value>
+  </data>
+  <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
+    <value>Mudanças de idioma valem após reiniciar.</value>
+  </data>
+  <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
+    <value>Usar cores em gradiente</value>
+  </data>
+  <data name="SettingsForm_Colors_Cool" xml:space="preserve">
+    <value>Cor fria:</value>
+  </data>
+  <data name="SettingsForm_Colors_Warm" xml:space="preserve">
+    <value>Cor morna:</value>
+  </data>
+  <data name="SettingsForm_Colors_Hot" xml:space="preserve">
+    <value>Cor quente:</value>
+  </data>
+  <data name="SettingsForm_Colors_Critical" xml:space="preserve">
+    <value>Cor crítica:</value>
+  </data>
+  <data name="SettingsForm_Sensors_Title" xml:space="preserve">
+    <value>Selecione os sensores para mostrar na dica:</value>
+  </data>
+  <data name="SettingsForm_Tray_Title" xml:space="preserve">
+    <value>Selecione os sensores para mostrar na bandeja do sistema:</value>
+  </data>
+  <data name="SettingsForm_Logging_Enable" xml:space="preserve">
+    <value>Ativar registro</value>
+  </data>
+  <data name="SettingsForm_Logging_LogPath" xml:space="preserve">
+    <value>Caminho do registro:</value>
+  </data>
+  <data name="SettingsForm_Logging_BrowseFilter" xml:space="preserve">
+    <value>Arquivos CSV|*.csv|Arquivos JSON|*.json|Texto simples|*.txt</value>
+  </data>
+  <data name="SettingsForm_Logging_Interval" xml:space="preserve">
+    <value>Intervalo (segundos):</value>
+  </data>
+  <data name="SettingsForm_Logging_Format" xml:space="preserve">
+    <value>Formato:</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Csv" xml:space="preserve">
+    <value>CSV</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Json" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Txt" xml:space="preserve">
+    <value>TXT</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats" xml:space="preserve">
+    <value>Estatísticas</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Avg" xml:space="preserve">
+    <value>Méd</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Min" xml:space="preserve">
+    <value>Mín</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Max" xml:space="preserve">
+    <value>Máx</value>
+  </data>
+  <data name="SettingsForm_Logging_SelectSensors" xml:space="preserve">
+    <value>Selecione os sensores para registrar:</value>
+  </data>
+  <data name="SensorItem_Format" xml:space="preserve">
+    <value>{0} ({1}°C)</value>
+  </data>
+</root>

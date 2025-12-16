@@ -40,6 +40,12 @@ namespace HotCPU
 
         public void UpdateData(TemperatureReading reading)
         {
+            if (InvokeRequired)
+            {
+                Invoke(() => UpdateData(reading));
+                return;
+            }
+            
             _currentReading = reading;
             Size = MeasureSize();
             Invalidate();
@@ -111,8 +117,8 @@ namespace HotCPU
 
             var brushText = Brushes.White;
             var brushDim = Brushes.LightGray;
-            var penChart = new Pen(Color.LimeGreen, 1.5f);
-            var penGrid = new Pen(Color.FromArgb(60, 60, 60), 1f);
+            using var penChart = new Pen(Color.LimeGreen, 1.5f);
+            using var penGrid = new Pen(Color.FromArgb(60, 60, 60), 1f);
 
             foreach (var hw in _currentReading.AllTemps.Where(h => h.Sensors.Any()))
             {
@@ -160,7 +166,8 @@ namespace HotCPU
 
         private void DrawSparkline(Graphics g, float x, float y, float w, float h, float[] history, float current)
         {
-            g.FillRectangle(new SolidBrush(Color.FromArgb(30,30,30)), x, y, w, h);
+            using var bgBrush = new SolidBrush(Color.FromArgb(30, 30, 30));
+            g.FillRectangle(bgBrush, x, y, w, h);
 
             if (history == null || history.Length < 2) return;
 
@@ -196,7 +203,8 @@ namespace HotCPU
             using var pen = new Pen(color, 1.5f);
             g.DrawLines(pen, points);
             var last = points.Last();
-            g.FillEllipse(new SolidBrush(color), last.X - 2, last.Y - 2, 4, 4);
+            using var dotBrush = new SolidBrush(color);
+            g.FillEllipse(dotBrush, last.X - 2, last.Y - 2, 4, 4);
         }
 
         private void UpdatePosition(Point cursor)

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsForm_Title" xml:space="preserve">
+    <value>Настройки HotCPU</value>
+  </data>
+  <data name="SettingsForm_Tab_General" xml:space="preserve">
+    <value>Общие</value>
+  </data>
+  <data name="SettingsForm_Tab_Colors" xml:space="preserve">
+    <value>Цвета</value>
+  </data>
+  <data name="SettingsForm_Tab_Sensors" xml:space="preserve">
+    <value>Датчики</value>
+  </data>
+  <data name="SettingsForm_Tab_Tray" xml:space="preserve">
+    <value>Трей</value>
+  </data>
+  <data name="SettingsForm_Tab_Logging" xml:space="preserve">
+    <value>Логирование</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="SettingsForm_SelectAll" xml:space="preserve">
+    <value>Выбрать все</value>
+  </data>
+  <data name="SettingsForm_General_RefreshInterval" xml:space="preserve">
+    <value>Интервал обновления:</value>
+  </data>
+  <data name="SettingsForm_General_Interval_05" xml:space="preserve">
+    <value>0,5 секунды</value>
+  </data>
+  <data name="SettingsForm_General_Interval_1" xml:space="preserve">
+    <value>1 секунда</value>
+  </data>
+  <data name="SettingsForm_General_Interval_2" xml:space="preserve">
+    <value>2 секунды</value>
+  </data>
+  <data name="SettingsForm_General_Interval_5" xml:space="preserve">
+    <value>5 секунд</value>
+  </data>
+  <data name="SettingsForm_General_WarmThreshold" xml:space="preserve">
+    <value>Порог "тепло" (°C):</value>
+  </data>
+  <data name="SettingsForm_General_HotThreshold" xml:space="preserve">
+    <value>Порог "жарко" (°C):</value>
+  </data>
+  <data name="SettingsForm_General_CriticalThreshold" xml:space="preserve">
+    <value>Критический порог (°C):</value>
+  </data>
+  <data name="SettingsForm_General_FontSize" xml:space="preserve">
+    <value>Размер шрифта:</value>
+  </data>
+  <data name="SettingsForm_General_FontSmall" xml:space="preserve">
+    <value>Маленький (10px)</value>
+  </data>
+  <data name="SettingsForm_General_FontMedium" xml:space="preserve">
+    <value>Средний (12px)</value>
+  </data>
+  <data name="SettingsForm_General_FontLarge" xml:space="preserve">
+    <value>Большой (14px)</value>
+  </data>
+  <data name="SettingsForm_General_StartWithWindows" xml:space="preserve">
+    <value>Запускать с Windows</value>
+  </data>
+  <data name="SettingsForm_General_ShowTrayTemperature" xml:space="preserve">
+    <value>Показывать температуру в трее</value>
+  </data>
+  <data name="SettingsForm_General_Language" xml:space="preserve">
+    <value>Язык:</value>
+  </data>
+  <data name="SettingsForm_General_LanguageAuto" xml:space="preserve">
+    <value>Использовать язык Windows</value>
+  </data>
+  <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
+    <value>Изменение языка вступит в силу после перезапуска.</value>
+  </data>
+  <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
+    <value>Использовать градиент</value>
+  </data>
+  <data name="SettingsForm_Colors_Cool" xml:space="preserve">
+    <value>Холодный цвет:</value>
+  </data>
+  <data name="SettingsForm_Colors_Warm" xml:space="preserve">
+    <value>Тёплый цвет:</value>
+  </data>
+  <data name="SettingsForm_Colors_Hot" xml:space="preserve">
+    <value>Горячий цвет:</value>
+  </data>
+  <data name="SettingsForm_Colors_Critical" xml:space="preserve">
+    <value>Критический цвет:</value>
+  </data>
+  <data name="SettingsForm_Sensors_Title" xml:space="preserve">
+    <value>Выберите датчики для подсказки:</value>
+  </data>
+  <data name="SettingsForm_Tray_Title" xml:space="preserve">
+    <value>Выберите датчики для системного трея:</value>
+  </data>
+  <data name="SettingsForm_Logging_Enable" xml:space="preserve">
+    <value>Включить логирование</value>
+  </data>
+  <data name="SettingsForm_Logging_LogPath" xml:space="preserve">
+    <value>Путь к логу:</value>
+  </data>
+  <data name="SettingsForm_Logging_BrowseFilter" xml:space="preserve">
+    <value>Файлы CSV|*.csv|Файлы JSON|*.json|Текстовые файлы|*.txt</value>
+  </data>
+  <data name="SettingsForm_Logging_Interval" xml:space="preserve">
+    <value>Интервал (секунды):</value>
+  </data>
+  <data name="SettingsForm_Logging_Format" xml:space="preserve">
+    <value>Формат:</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Csv" xml:space="preserve">
+    <value>CSV</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Json" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Txt" xml:space="preserve">
+    <value>TXT</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats" xml:space="preserve">
+    <value>Статистика</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Avg" xml:space="preserve">
+    <value>Сред</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Min" xml:space="preserve">
+    <value>Мин</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Max" xml:space="preserve">
+    <value>Макс</value>
+  </data>
+  <data name="SettingsForm_Logging_SelectSensors" xml:space="preserve">
+    <value>Выберите датчики для логирования:</value>
+  </data>
+  <data name="SensorItem_Format" xml:space="preserve">
+    <value>{0} ({1}°C)</value>
+  </data>
+</root>

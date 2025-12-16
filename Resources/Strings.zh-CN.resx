@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsForm_Title" xml:space="preserve">
+    <value>HotCPU 设置</value>
+  </data>
+  <data name="SettingsForm_Tab_General" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="SettingsForm_Tab_Colors" xml:space="preserve">
+    <value>颜色</value>
+  </data>
+  <data name="SettingsForm_Tab_Sensors" xml:space="preserve">
+    <value>传感器</value>
+  </data>
+  <data name="SettingsForm_Tab_Tray" xml:space="preserve">
+    <value>系统托盘</value>
+  </data>
+  <data name="SettingsForm_Tab_Logging" xml:space="preserve">
+    <value>日志</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="SettingsForm_SelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="SettingsForm_General_RefreshInterval" xml:space="preserve">
+    <value>刷新间隔：</value>
+  </data>
+  <data name="SettingsForm_General_Interval_05" xml:space="preserve">
+    <value>0.5 秒</value>
+  </data>
+  <data name="SettingsForm_General_Interval_1" xml:space="preserve">
+    <value>1 秒</value>
+  </data>
+  <data name="SettingsForm_General_Interval_2" xml:space="preserve">
+    <value>2 秒</value>
+  </data>
+  <data name="SettingsForm_General_Interval_5" xml:space="preserve">
+    <value>5 秒</value>
+  </data>
+  <data name="SettingsForm_General_WarmThreshold" xml:space="preserve">
+    <value>温暖阈值 (°C)：</value>
+  </data>
+  <data name="SettingsForm_General_HotThreshold" xml:space="preserve">
+    <value>高温阈值 (°C)：</value>
+  </data>
+  <data name="SettingsForm_General_CriticalThreshold" xml:space="preserve">
+    <value>危急阈值 (°C)：</value>
+  </data>
+  <data name="SettingsForm_General_FontSize" xml:space="preserve">
+    <value>字体大小：</value>
+  </data>
+  <data name="SettingsForm_General_FontSmall" xml:space="preserve">
+    <value>小 (10px)</value>
+  </data>
+  <data name="SettingsForm_General_FontMedium" xml:space="preserve">
+    <value>中 (12px)</value>
+  </data>
+  <data name="SettingsForm_General_FontLarge" xml:space="preserve">
+    <value>大 (14px)</value>
+  </data>
+  <data name="SettingsForm_General_StartWithWindows" xml:space="preserve">
+    <value>随 Windows 启动</value>
+  </data>
+  <data name="SettingsForm_General_ShowTrayTemperature" xml:space="preserve">
+    <value>在托盘图标显示温度</value>
+  </data>
+  <data name="SettingsForm_General_Language" xml:space="preserve">
+    <value>语言：</value>
+  </data>
+  <data name="SettingsForm_General_LanguageAuto" xml:space="preserve">
+    <value>使用 Windows 语言</value>
+  </data>
+  <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
+    <value>语言更改需重启后生效。</value>
+  </data>
+  <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
+    <value>使用渐变色</value>
+  </data>
+  <data name="SettingsForm_Colors_Cool" xml:space="preserve">
+    <value>冷色：</value>
+  </data>
+  <data name="SettingsForm_Colors_Warm" xml:space="preserve">
+    <value>暖色：</value>
+  </data>
+  <data name="SettingsForm_Colors_Hot" xml:space="preserve">
+    <value>热色：</value>
+  </data>
+  <data name="SettingsForm_Colors_Critical" xml:space="preserve">
+    <value>危急颜色：</value>
+  </data>
+  <data name="SettingsForm_Sensors_Title" xml:space="preserve">
+    <value>选择在提示中显示的传感器：</value>
+  </data>
+  <data name="SettingsForm_Tray_Title" xml:space="preserve">
+    <value>选择在系统托盘显示的传感器：</value>
+  </data>
+  <data name="SettingsForm_Logging_Enable" xml:space="preserve">
+    <value>启用日志</value>
+  </data>
+  <data name="SettingsForm_Logging_LogPath" xml:space="preserve">
+    <value>日志路径：</value>
+  </data>
+  <data name="SettingsForm_Logging_BrowseFilter" xml:space="preserve">
+    <value>CSV 文件|*.csv|JSON 文件|*.json|文本文件|*.txt</value>
+  </data>
+  <data name="SettingsForm_Logging_Interval" xml:space="preserve">
+    <value>间隔 (秒)：</value>
+  </data>
+  <data name="SettingsForm_Logging_Format" xml:space="preserve">
+    <value>格式：</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Csv" xml:space="preserve">
+    <value>CSV</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Json" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Txt" xml:space="preserve">
+    <value>TXT</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats" xml:space="preserve">
+    <value>统计</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Avg" xml:space="preserve">
+    <value>平均</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Min" xml:space="preserve">
+    <value>最小</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Max" xml:space="preserve">
+    <value>最大</value>
+  </data>
+  <data name="SettingsForm_Logging_SelectSensors" xml:space="preserve">
+    <value>选择要记录的传感器：</value>
+  </data>
+  <data name="SensorItem_Format" xml:space="preserve">
+    <value>{0} ({1}°C)</value>
+  </data>
+</root>

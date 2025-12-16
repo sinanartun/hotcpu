@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsForm_Title" xml:space="preserve">
+    <value>HotCPU 설정</value>
+  </data>
+  <data name="SettingsForm_Tab_General" xml:space="preserve">
+    <value>일반</value>
+  </data>
+  <data name="SettingsForm_Tab_Colors" xml:space="preserve">
+    <value>색상</value>
+  </data>
+  <data name="SettingsForm_Tab_Sensors" xml:space="preserve">
+    <value>센서</value>
+  </data>
+  <data name="SettingsForm_Tab_Tray" xml:space="preserve">
+    <value>트레이 아이콘</value>
+  </data>
+  <data name="SettingsForm_Tab_Logging" xml:space="preserve">
+    <value>로그</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>저장</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>취소</value>
+  </data>
+  <data name="SettingsForm_SelectAll" xml:space="preserve">
+    <value>모두 선택</value>
+  </data>
+  <data name="SettingsForm_General_RefreshInterval" xml:space="preserve">
+    <value>새로 고침 간격:</value>
+  </data>
+  <data name="SettingsForm_General_Interval_05" xml:space="preserve">
+    <value>0.5초</value>
+  </data>
+  <data name="SettingsForm_General_Interval_1" xml:space="preserve">
+    <value>1초</value>
+  </data>
+  <data name="SettingsForm_General_Interval_2" xml:space="preserve">
+    <value>2초</value>
+  </data>
+  <data name="SettingsForm_General_Interval_5" xml:space="preserve">
+    <value>5초</value>
+  </data>
+  <data name="SettingsForm_General_WarmThreshold" xml:space="preserve">
+    <value>따뜻함 임계값 (°C):</value>
+  </data>
+  <data name="SettingsForm_General_HotThreshold" xml:space="preserve">
+    <value>뜨거움 임계값 (°C):</value>
+  </data>
+  <data name="SettingsForm_General_CriticalThreshold" xml:space="preserve">
+    <value>위험 임계값 (°C):</value>
+  </data>
+  <data name="SettingsForm_General_FontSize" xml:space="preserve">
+    <value>글꼴 크기:</value>
+  </data>
+  <data name="SettingsForm_General_FontSmall" xml:space="preserve">
+    <value>작게 (10px)</value>
+  </data>
+  <data name="SettingsForm_General_FontMedium" xml:space="preserve">
+    <value>보통 (12px)</value>
+  </data>
+  <data name="SettingsForm_General_FontLarge" xml:space="preserve">
+    <value>크게 (14px)</value>
+  </data>
+  <data name="SettingsForm_General_StartWithWindows" xml:space="preserve">
+    <value>Windows 시작 시 실행</value>
+  </data>
+  <data name="SettingsForm_General_ShowTrayTemperature" xml:space="preserve">
+    <value>트레이 아이콘에 온도 표시</value>
+  </data>
+  <data name="SettingsForm_General_Language" xml:space="preserve">
+    <value>언어:</value>
+  </data>
+  <data name="SettingsForm_General_LanguageAuto" xml:space="preserve">
+    <value>Windows 언어 사용</value>
+  </data>
+  <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
+    <value>언어 변경은 재시작 후 적용됩니다.</value>
+  </data>
+  <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
+    <value>그라데이션 색상 사용</value>
+  </data>
+  <data name="SettingsForm_Colors_Cool" xml:space="preserve">
+    <value>차가운 색:</value>
+  </data>
+  <data name="SettingsForm_Colors_Warm" xml:space="preserve">
+    <value>따뜻한 색:</value>
+  </data>
+  <data name="SettingsForm_Colors_Hot" xml:space="preserve">
+    <value>뜨거운 색:</value>
+  </data>
+  <data name="SettingsForm_Colors_Critical" xml:space="preserve">
+    <value>위험 색:</value>
+  </data>
+  <data name="SettingsForm_Sensors_Title" xml:space="preserve">
+    <value>툴팁에 표시할 센서 선택:</value>
+  </data>
+  <data name="SettingsForm_Tray_Title" xml:space="preserve">
+    <value>시스템 트레이에 표시할 센서 선택:</value>
+  </data>
+  <data name="SettingsForm_Logging_Enable" xml:space="preserve">
+    <value>로그 활성화</value>
+  </data>
+  <data name="SettingsForm_Logging_LogPath" xml:space="preserve">
+    <value>로그 경로:</value>
+  </data>
+  <data name="SettingsForm_Logging_BrowseFilter" xml:space="preserve">
+    <value>CSV 파일|*.csv|JSON 파일|*.json|텍스트|*.txt</value>
+  </data>
+  <data name="SettingsForm_Logging_Interval" xml:space="preserve">
+    <value>간격 (초):</value>
+  </data>
+  <data name="SettingsForm_Logging_Format" xml:space="preserve">
+    <value>형식:</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Csv" xml:space="preserve">
+    <value>CSV</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Json" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="SettingsForm_Logging_Format_Txt" xml:space="preserve">
+    <value>TXT</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats" xml:space="preserve">
+    <value>통계</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Avg" xml:space="preserve">
+    <value>평균</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Min" xml:space="preserve">
+    <value>최소</value>
+  </data>
+  <data name="SettingsForm_Logging_Stats_Max" xml:space="preserve">
+    <value>최대</value>
+  </data>
+  <data name="SettingsForm_Logging_SelectSensors" xml:space="preserve">
+    <value>로그할 센서 선택:</value>
+  </data>
+  <data name="SensorItem_Format" xml:space="preserve">
+    <value>{0} ({1}°C)</value>
+  </data>
+</root>

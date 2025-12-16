@@ -8,7 +8,6 @@ c:\projects\hotcpu\HotCPU.Tests\obj\Debug\net8.0-windows10.0.19041.0\HotCPU.Test
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\testhost.dll
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\HotCPU.deps.json
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\HotCPU.runtimeconfig.json
-c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\tenor.gif
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\AppIcon.png
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\BadgeLogo.png
 c:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\Square150x150Logo.png
@@ -159,3 +158,18 @@ c:\projects\hotcpu\HotCPU.Tests\obj\Debug\net8.0-windows10.0.19041.0\refint\HotC
 c:\projects\hotcpu\HotCPU.Tests\obj\Debug\net8.0-windows10.0.19041.0\HotCPU.Tests.pdb
 c:\projects\hotcpu\HotCPU.Tests\obj\Debug\net8.0-windows10.0.19041.0\HotCPU.Tests.genruntimeconfig.cache
 c:\projects\hotcpu\HotCPU.Tests\obj\Debug\net8.0-windows10.0.19041.0\ref\HotCPU.Tests.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\AppIcon.ico
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\LogoDark256.png
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\LogoLight256.png
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\Images\source\logo.xcf
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\ar-SA\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\de-DE\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\es-ES\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\fr-FR\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\hi-IN\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\ja-JP\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\ko-KR\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\pt-BR\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\ru-RU\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\tr-TR\HotCPU.resources.dll
+C:\projects\hotcpu\HotCPU.Tests\bin\Debug\net8.0-windows10.0.19041.0\zh-CN\HotCPU.resources.dll

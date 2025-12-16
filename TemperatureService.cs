@@ -25,18 +25,20 @@ namespace HotCPU
         {
             _settings = settings;
             
-            // Enable ALL hardware monitoring
+            // Only enable hardware types that provide temperature readings
+            // Network, Memory, PSU, Battery, Controller typically don't provide useful temps
             _computer = new Computer 
             { 
                 IsCpuEnabled = true,
                 IsGpuEnabled = true,
                 IsMotherboardEnabled = true,
                 IsStorageEnabled = true,
-                IsNetworkEnabled = true,
-                IsControllerEnabled = true,
-                IsMemoryEnabled = true,
-                IsPsuEnabled = true,
-                IsBatteryEnabled = true
+                // Disabled to reduce memory footprint:
+                IsNetworkEnabled = false,
+                IsControllerEnabled = false,
+                IsMemoryEnabled = false,
+                IsPsuEnabled = false,
+                IsBatteryEnabled = false
             };
 
             // Try Initialize NvAPI
@@ -241,10 +243,15 @@ namespace HotCPU
 
         // History tracking
         private readonly Dictionary<string, Queue<float>> _sensorHistory = new();
+        private readonly Dictionary<string, DateTime> _sensorLastSeen = new();
         private const int MAX_HISTORY = 30;
+        private const int STALE_SENSOR_THRESHOLD_MINUTES = 5;
+        private DateTime _lastCleanup = DateTime.UtcNow;
 
         private void UpdateHistory(string identifier, float temperature)
         {
+            _sensorLastSeen[identifier] = DateTime.UtcNow;
+            
             if (!_sensorHistory.ContainsKey(identifier))
                 _sensorHistory[identifier] = new Queue<float>();
 
@@ -253,6 +260,28 @@ namespace HotCPU
             
             if (queue.Count > MAX_HISTORY)
                 queue.Dequeue();
+            
+            // Periodic cleanup of stale sensors (every minute)
+            if ((DateTime.UtcNow - _lastCleanup).TotalMinutes >= 1)
+            {
+                CleanupStaleSensors();
+                _lastCleanup = DateTime.UtcNow;
+            }
+        }
+
+        private void CleanupStaleSensors()
+        {
+            var now = DateTime.UtcNow;
+            var staleIds = _sensorLastSeen
+                .Where(kvp => (now - kvp.Value).TotalMinutes > STALE_SENSOR_THRESHOLD_MINUTES)
+                .Select(kvp => kvp.Key)
+                .ToList();
+            
+            foreach (var id in staleIds)
+            {
+                _sensorHistory.Remove(id);
+                _sensorLastSeen.Remove(id);
+            }
         }
 
         private float[] GetHistory(string identifier)
@@ -354,26 +383,30 @@ namespace HotCPU
                     @"root\WMI",
                     "SELECT * FROM MSAcpi_ThermalZoneTemperature");
 
-                foreach (ManagementObject obj in searcher.Get())
+                using var collection = searcher.Get();
+                foreach (ManagementObject obj in collection)
                 {
-                    try
+                    using (obj)
                     {
-                        var tempKelvin = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
-                        var tempCelsius = (float)(tempKelvin - 273.15);
-                        
-                        // Ignore invalid readings (absolute zero or absurdly high)
-                        if (tempCelsius < -50 || tempCelsius > 200) continue;
+                        try
+                        {
+                            var tempKelvin = Convert.ToDouble(obj["CurrentTemperature"]) / 10.0;
+                            var tempCelsius = (float)(tempKelvin - 273.15);
+                            
+                            // Ignore invalid readings (absolute zero or absurdly high)
+                            if (tempCelsius < -50 || tempCelsius > 200) continue;
 
-                        var name = obj["InstanceName"]?.ToString() ?? "Thermal Zone";
-                        if (name.Contains("\\"))
-                            name = name.Split('\\').Last();
-                        
-                        var id = $"WMI_Process_{name}";
-                        UpdateHistory(id, tempCelsius);
+                            var name = obj["InstanceName"]?.ToString() ?? "Thermal Zone";
+                            if (name.Contains("\\"))
+                                name = name.Split('\\').Last();
+                            
+                            var id = $"WMI_Process_{name}";
+                            UpdateHistory(id, tempCelsius);
 
-                        wmiTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                            wmiTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             catch { }
@@ -393,25 +426,29 @@ namespace HotCPU
                     @"root\Microsoft\Windows\Storage",
                     "SELECT FriendlyName, Temperature FROM MSFT_PhysicalDisk WHERE Temperature > 0");
 
-                foreach (ManagementObject obj in searcher.Get())
+                using var collection = searcher.Get();
+                foreach (ManagementObject obj in collection)
                 {
-                    try
+                    using (obj)
                     {
-                        var name = obj["FriendlyName"]?.ToString() ?? "Unknown Disk";
-                        var tempObj = obj["Temperature"]; // Usually in Celsius already for this API
-                        
-                        if (tempObj != null)
+                        try
                         {
-                            var tempCelsius = Convert.ToSingle(tempObj);
-                            var id = $"WMI_Disk_{name}";
-                            UpdateHistory(id, tempCelsius);
+                            var name = obj["FriendlyName"]?.ToString() ?? "Unknown Disk";
+                            var tempObj = obj["Temperature"]; // Usually in Celsius already for this API
                             
-                            var simpleDisk = HotCPU.Helpers.StringHelper.SimplifyHardwareName(name);
-                            
-                            diskTemps.Sensors.Add(new SensorTemp(simpleDisk, tempCelsius, GetHistory(id), id));
+                            if (tempObj != null)
+                            {
+                                var tempCelsius = Convert.ToSingle(tempObj);
+                                var id = $"WMI_Disk_{name}";
+                                UpdateHistory(id, tempCelsius);
+                                
+                                var simpleDisk = HotCPU.Helpers.StringHelper.SimplifyHardwareName(name);
+                                
+                                diskTemps.Sensors.Add(new SensorTemp(simpleDisk, tempCelsius, GetHistory(id), id));
+                            }
                         }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             catch { }
@@ -431,33 +468,37 @@ namespace HotCPU
                     @"root\CIMv2",
                     "SELECT Name, Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation WHERE Temperature > 0");
 
-                foreach (ManagementObject obj in searcher.Get())
+                using var collection = searcher.Get();
+                foreach (ManagementObject obj in collection)
                 {
-                    try
+                    using (obj)
                     {
-                        var tempKelvin = Convert.ToDouble(obj["Temperature"]);
-                        // Some implementations use raw Kelvin, others might be already Celsius or scaled
-                        // Standard WMI Thermal Zone is tenths of Kelvin usually, but PerfCounters can be different.
-                        // However, Win32_PerfFormattedData_Counters_ThermalZoneInformation often mirrors MSAcpi_ThermalZoneTemperature.
-                        // Let's assume K for safety if > 200, otherwise C.
-                        
-                        float tempCelsius = (float)tempKelvin; 
-                        
-                        // If it's huge, it's likely Kelvin
-                        if (tempCelsius > 200)
-                            tempCelsius = (float)(tempKelvin - 273.15);
+                        try
+                        {
+                            var tempKelvin = Convert.ToDouble(obj["Temperature"]);
+                            // Some implementations use raw Kelvin, others might be already Celsius or scaled
+                            // Standard WMI Thermal Zone is tenths of Kelvin usually, but PerfCounters can be different.
+                            // However, Win32_PerfFormattedData_Counters_ThermalZoneInformation often mirrors MSAcpi_ThermalZoneTemperature.
+                            // Let's assume K for safety if > 200, otherwise C.
                             
-                        // Sanity check
-                        if (tempCelsius < -50 || tempCelsius > 200) continue;
+                            float tempCelsius = (float)tempKelvin; 
+                            
+                            // If it's huge, it's likely Kelvin
+                            if (tempCelsius > 200)
+                                tempCelsius = (float)(tempKelvin - 273.15);
+                                
+                            // Sanity check
+                            if (tempCelsius < -50 || tempCelsius > 200) continue;
 
-                        var name = obj["Name"]?.ToString() ?? "Thermal Zone";
-                        
-                        var id = $"WMI_CIM_{name}";
-                        UpdateHistory(id, tempCelsius);
+                            var name = obj["Name"]?.ToString() ?? "Thermal Zone";
+                            
+                            var id = $"WMI_CIM_{name}";
+                            UpdateHistory(id, tempCelsius);
 
-                        cimTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                            cimTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             catch { }
@@ -471,11 +512,15 @@ namespace HotCPU
             try
             {
                 using var searcher = new ManagementObjectSearcher("root\\CIMv2", "SELECT Name FROM Win32_Processor");
-                foreach (ManagementObject obj in searcher.Get())
+                using var collection = searcher.Get();
+                foreach (ManagementObject obj in collection)
                 {
-                    var name = obj["Name"]?.ToString();
-                    if (!string.IsNullOrWhiteSpace(name)) 
-                        return name.Trim();
+                    using (obj)
+                    {
+                        var name = obj["Name"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(name)) 
+                            return name.Trim();
+                    }
                 }
             }
             catch { }

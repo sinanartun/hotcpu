@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8Bs80CFU+n8=",
+  "dgSpecHash": "0tfOevcAe3g=",
   "success": true,
-  "projectFilePath": "c:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
+  "projectFilePath": "C:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\sinan\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\excss\\4.2.3\\excss.4.2.3.nupkg.sha512",

@@ -12,6 +12,8 @@ namespace HotCPU
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "HotCPU", "settings.json");
+        
+        private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
         // Settings properties
         public int RefreshIntervalMs { get; set; } = 1000;
@@ -73,7 +75,7 @@ namespace HotCPU
                 var dir = Path.GetDirectoryName(SettingsPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
-                var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(this, _jsonOptions);
                 File.WriteAllText(SettingsPath, json);
             }
             catch { }

@@ -1446,6 +1446,41 @@
             "assemblyVersion": "1.0.0",
             "fileVersion": "1.0.0.0"
           }
+        },
+        "resources": {
+          "ar-SA/HotCPU.resources.dll": {
+            "locale": "ar-SA"
+          },
+          "de-DE/HotCPU.resources.dll": {
+            "locale": "de-DE"
+          },
+          "es-ES/HotCPU.resources.dll": {
+            "locale": "es-ES"
+          },
+          "fr-FR/HotCPU.resources.dll": {
+            "locale": "fr-FR"
+          },
+          "hi-IN/HotCPU.resources.dll": {
+            "locale": "hi-IN"
+          },
+          "ja-JP/HotCPU.resources.dll": {
+            "locale": "ja-JP"
+          },
+          "ko-KR/HotCPU.resources.dll": {
+            "locale": "ko-KR"
+          },
+          "pt-BR/HotCPU.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "ru-RU/HotCPU.resources.dll": {
+            "locale": "ru-RU"
+          },
+          "tr-TR/HotCPU.resources.dll": {
+            "locale": "tr-TR"
+          },
+          "zh-CN/HotCPU.resources.dll": {
+            "locale": "zh-CN"
+          }
         }
       }
     }

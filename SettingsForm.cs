@@ -598,17 +598,47 @@ namespace HotCPU
                 new LanguageOption(S("SettingsForm_General_LanguageAuto"), null)
             };
 
-            var cultures = CultureInfo
-                .GetCultures(CultureTypes.SpecificCultures | CultureTypes.NeutralCultures)
-                .Where(c => !string.IsNullOrWhiteSpace(c.Name))
-                .GroupBy(c => c.Name)
-                .Select(g => g.First())
-                .OrderBy(c => c.EnglishName, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var culture in cultures)
+            string[] popularCultures =
             {
-                var displayName = $"{culture.EnglishName} [{culture.Name}]";
-                options.Add(new LanguageOption(displayName, culture.Name));
+                "en-US", // English
+                "zh-CN", // Chinese (Simplified)
+                "es-ES", // Spanish
+                "hi-IN", // Hindi
+                "ar-SA", // Arabic
+                "bn-BD", // Bengali
+                "pt-BR", // Portuguese
+                "ru-RU", // Russian
+                "ja-JP", // Japanese
+                "pa-IN", // Punjabi
+                "de-DE", // German
+                "fr-FR", // French
+                "ur-PK", // Urdu
+                "id-ID", // Indonesian
+                "vi-VN", // Vietnamese
+                "ko-KR", // Korean
+                "it-IT", // Italian
+                "tr-TR", // Turkish
+                "ta-IN", // Tamil
+                "te-IN", // Telugu
+                "mr-IN", // Marathi
+                "fa-IR", // Persian
+                "sw-KE", // Swahili
+                "nl-NL", // Dutch
+                "pl-PL"  // Polish
+            };
+
+            foreach (var code in popularCultures)
+            {
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(code);
+                    var displayName = $"{culture.EnglishName} [{culture.Name}]";
+                    options.Add(new LanguageOption(displayName, culture.Name));
+                }
+                catch (CultureNotFoundException)
+                {
+                    // Skip any cultures not supported by the current framework/runtime.
+                }
             }
 
             _languageOptions = options;
@@ -633,7 +663,8 @@ namespace HotCPU
                 10 => 0, 12 => 1, 14 => 2, _ => 2
             };
 
-            if (_languageOptions.Count == 0)
+            // Ensure combo is populated
+            if (_languageCombo.Items.Count == 0)
             {
                 PopulateLanguageCombo();
             }
@@ -648,7 +679,12 @@ namespace HotCPU
                     languageIndex = 0;
                 }
             }
-            _languageCombo.SelectedIndex = languageIndex;
+            if (_languageCombo.Items.Count > 0)
+            {
+                if (languageIndex >= _languageCombo.Items.Count)
+                    languageIndex = 0;
+                _languageCombo.SelectedIndex = languageIndex;
+            }
 
             _startWithWindowsCheck.Checked = _settings.StartWithWindows;
             _showTrayTempCheck.Checked = _settings.ShowTrayIconTemperature;

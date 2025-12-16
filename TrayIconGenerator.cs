@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -8,9 +7,9 @@ namespace HotCPU
 {
     internal static class TrayIconGenerator
     {
-        public static Icon CreateIcon(int temperature, TemperatureLevel level, AppSettings settings, Image? backgroundImage = null)
+        public static Icon CreateIcon(int temperature, TemperatureLevel level, AppSettings settings)
         {
-            using var bmp = new Bitmap(16, 16, PixelFormat.Format32bppArgb);
+            using var bmp = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using var g = Graphics.FromImage(bmp);
 
             // Enable antialiasing
@@ -18,13 +17,6 @@ namespace HotCPU
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
             g.Clear(Color.Transparent);
-
-            // Draw background image if provided
-            if (backgroundImage != null)
-            {
-                g.DrawImage(backgroundImage, new Rectangle(0, 0, 16, 16));
-                // Overlay removed as per user request
-            }
 
             // Display text based on settings
             // Display text based on settings
@@ -39,7 +31,7 @@ namespace HotCPU
                 _ => settings.FontSize - 3
             };
 
-            using var font = GetFont(fontSize);
+            var font = GetFont(fontSize);
 
             // Adjust vertical position - larger fonts need to be moved up slightly
             int yOffset = settings.FontSize >= 14 ? -1 : 0;
@@ -51,16 +43,6 @@ namespace HotCPU
 
             // Get color based on settings
             var textColor = GetTextColor(temperature, level, settings);
-            
-            // If we have a background image (fire), white text is usually best
-            if (backgroundImage != null) 
-            {
-                textColor = Color.White;
-
-                // Add Drop Shadow (Dark Red) for readability on fire
-                var shadowRect = new Rectangle(1, yOffset + 1, bmp.Width, bmp.Height);
-                TextRenderer.DrawText(g, text, font, shadowRect, Color.DarkRed, flags);
-            }
 
             TextRenderer.DrawText(g, text, font, rect, textColor, flags);
 
