@@ -88,7 +88,10 @@
     <value>Match Windows language</value>
   </data>
   <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
-    <value>Language changes take effect after restart.</value>
+    <value>Language changes take effect after restarting the application.</value>
+  </data>
+  <data name="SettingsForm_General_RestartNow" xml:space="preserve">
+    <value>Would you like to restart HotCPU now?</value>
   </data>
   <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
     <value>Use gradient colors</value>

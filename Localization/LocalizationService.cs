@@ -22,7 +22,16 @@ namespace HotCPU.Localization
                 return string.Empty;
             }
 
-            return ResourceManager.GetString(key, _currentCulture) ?? key;
+            // Try to get the string for the explicitly set culture
+            var result = ResourceManager.GetString(key, _currentCulture);
+            
+            // If not found and we're looking for English, use invariant culture (default .resx)
+            if (result == null && _currentCulture.TwoLetterISOLanguageName == "en")
+            {
+                result = ResourceManager.GetString(key, CultureInfo.InvariantCulture);
+            }
+            
+            return result ?? key;
         }
 
         public static string Format(string key, params object[] args)

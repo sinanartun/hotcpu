@@ -88,7 +88,10 @@
     <value>Windows dilini kullan</value>
   </data>
   <data name="SettingsForm_General_LanguageRestart" xml:space="preserve">
-    <value>Dil değişikliği yeniden başlattıktan sonra geçerli olur.</value>
+    <value>Dil değişikliği uygulamayı yeniden başlattıktan sonra geçerli olur.</value>
+  </data>
+  <data name="SettingsForm_General_RestartNow" xml:space="preserve">
+    <value>HotCPU'yu şimdi yeniden başlatmak ister misiniz?</value>
   </data>
   <data name="SettingsForm_Colors_UseGradients" xml:space="preserve">
     <value>Degrade renkleri kullan</value>

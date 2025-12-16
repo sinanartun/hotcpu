@@ -85,3 +85,5 @@ C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\tr-TR\HotCPU.r
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\tr-TR\HotCPU.resources.dll
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\zh-CN\HotCPU.resources.cs
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\zh-CN\HotCPU.resources.dll
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\AppIcon2.png
+c:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\ss1.png

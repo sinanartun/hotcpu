@@ -29,7 +29,7 @@ namespace HotCPU
 
         // Logging settings
         public bool LogEnabled { get; set; } = false;
-        public string LogPath { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "HotCPU_Log.csv");
+        public string LogPath { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "hotcpu", "HotCPU_Log.csv");
         public int LogIntervalSeconds { get; set; } = 5;
         public string LogFormat { get; set; } = "CSV"; // CSV, JSON, TXT
         public List<string> LogSensorIds { get; set; } = new();

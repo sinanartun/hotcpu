@@ -62,6 +62,8 @@ namespace HotCPU
         private ComboBox _languageCombo = null!;
         private Label _languageInfoLabel = null!;
         private List<LanguageOption> _languageOptions = new();
+        private int _initialLanguageIndex = -1;
+        private bool _languageWarningShown = false;
 
         // Live Updates
         private readonly TemperatureService? _tempService;
@@ -308,6 +310,7 @@ namespace HotCPU
             AddLabel(page, S("SettingsForm_General_Language"), x, y);
             _languageCombo = CreateComboBox(page, 170, y - 3, 200);
             PopulateLanguageCombo();
+            _languageCombo.SelectedIndexChanged += OnLanguageChanged;
             y += 40;
 
             _languageInfoLabel = new Label
@@ -591,6 +594,52 @@ namespace HotCPU
             _criticalColorBtn.Enabled = enabled;
         }
 
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            // Only show warning once per session, and only if actually changed from initial
+            if (!_languageWarningShown && 
+                _initialLanguageIndex >= 0 && 
+                _languageCombo.SelectedIndex != _initialLanguageIndex)
+            {
+                _languageWarningShown = true;
+                var result = MessageBox.Show(
+                    S("SettingsForm_General_LanguageRestart") + "\n\n" + S("SettingsForm_General_RestartNow"),
+                    "HotCPU",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+                
+                if (result == DialogResult.Yes)
+                {
+                    // Save settings first
+                    SaveCurrentSettings();
+                    _settings.Save();
+                    
+                    // Restart application
+                    System.Diagnostics.Process.Start(Application.ExecutablePath);
+                    Application.Exit();
+                }
+            }
+        }
+        
+        private void SaveCurrentSettings()
+        {
+            _settings.RefreshIntervalMs = _refreshIntervalCombo.SelectedIndex switch
+            {
+                0 => 500, 1 => 1000, 2 => 2000, 3 => 5000, _ => 1000
+            };
+            _settings.WarmThreshold = (int)_warmThresholdNum.Value;
+            _settings.HotThreshold = (int)_hotThresholdNum.Value;
+            _settings.CriticalThreshold = (int)_criticalThresholdNum.Value;
+            _settings.FontSize = _fontSizeCombo.SelectedIndex switch
+            {
+                0 => 10, 1 => 12, 2 => 14, _ => 14
+            };
+            if (_languageCombo.SelectedItem is LanguageOption selectedLanguage)
+            {
+                _settings.Language = selectedLanguage.CultureCode;
+            }
+        }
+
         private void PopulateLanguageCombo()
         {
             var options = new List<LanguageOption>
@@ -684,6 +733,7 @@ namespace HotCPU
                 if (languageIndex >= _languageCombo.Items.Count)
                     languageIndex = 0;
                 _languageCombo.SelectedIndex = languageIndex;
+                _initialLanguageIndex = languageIndex;
             }
 
             _startWithWindowsCheck.Checked = _settings.StartWithWindows;
