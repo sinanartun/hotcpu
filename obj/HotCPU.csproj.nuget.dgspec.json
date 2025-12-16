@@ -36,6 +36,9 @@
           }
         },
         "warningProperties": {
+          "noWarn": [
+            "NU1605"
+          ],
           "warnAsError": [
             "NU1605"
           ]
@@ -54,9 +57,13 @@
               "target": "Package",
               "version": "[0.9.4, )"
             },
+            "Microsoft.Msix.Utils": {
+              "target": "Package",
+              "version": "[2.1.1, )"
+            },
             "Microsoft.Windows.SDK.BuildTools": {
               "target": "Package",
-              "version": "[10.0.22621.756, )"
+              "version": "[10.0.26100.7175, )"
             },
             "NvAPIWrapper.Net": {
               "target": "Package",
