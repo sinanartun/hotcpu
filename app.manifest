@@ -4,8 +4,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- UAC Manifest: Request admin privileges for hardware access -->
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <!-- UAC Manifest: Run with invoker privileges for Store compatibility -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

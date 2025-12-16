@@ -291,6 +291,81 @@ footer {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+footer a {
+  color: var(--primary-color);
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+footer p {
+  margin: 0.5rem 0;
+}
+
+/* Privacy Page */
+.privacy-page {
+  padding-top: 100px;
+  min-height: 100vh;
+}
+
+.privacy-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.privacy-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(45deg, var(--primary-color), #38bdf8);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.privacy-content .last-updated {
+  color: #747d8c;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.privacy-section {
+  margin-bottom: 2rem;
+  background: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.privacy-section h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.privacy-section p {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.privacy-section ul {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.privacy-section li {
+  margin-bottom: 0.5rem;
+}
+
+.privacy-section a {
+  color: var(--accent-blue);
+}
+
+.privacy-section a:hover {
+  text-decoration: underline;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hero {
