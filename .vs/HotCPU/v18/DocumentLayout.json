@@ -4,10 +4,6 @@
   "Documents": [
     {
       "AbsoluteMoniker": "D:0:0:{B6D76392-9E56-45EB-8EF9-0EF3960E6440}|..\\hotcpuPublish\\hotcpuPublish.wapproj|c:\\projects\\hotcpupublish\\hotcpupublish.wapproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\hotcpu.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
-      "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:hotcpu.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
     }
   ],
   "DocumentGroupContainers": [
@@ -27,22 +23,10 @@
               "RelativeDocumentMoniker": "..\\hotcpuPublish\\hotcpuPublish.wapproj",
               "ToolTip": "C:\\projects\\hotcpuPublish\\hotcpuPublish.wapproj",
               "RelativeToolTip": "..\\hotcpuPublish\\hotcpuPublish.wapproj",
-              "ViewState": "AgIAAIcAAAAAAAAAAAAuwKMAAAAKAAAAAAAAAA==",
+              "ViewState": "AgIAAJMAAAAAAAAAAAAAAKMAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-12-16T09:41:34.736Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "HotCPU.csproj",
-              "DocumentMoniker": "C:\\projects\\hotcpu\\HotCPU.csproj",
-              "RelativeDocumentMoniker": "HotCPU.csproj",
-              "ToolTip": "C:\\projects\\hotcpu\\HotCPU.csproj",
-              "RelativeToolTip": "HotCPU.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-12-16T09:39:16.479Z"
             }
           ]
         }
