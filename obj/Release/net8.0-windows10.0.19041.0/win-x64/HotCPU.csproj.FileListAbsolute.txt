@@ -100,3 +100,7 @@ C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\HotCPU.genrunt
 C:\projects\hotcpu\obj\Release\net8.0-windows10.0.19041.0\win-x64\ref\HotCPU.dll
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Microsoft.Extensions.CommandLineUtils.dll
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Microsoft.Msix.Utils.dll
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Recording 2025-12-16 135336.mp4
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_1080x1080.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_300x300.png
+C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_71x71.png

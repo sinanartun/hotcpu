@@ -5,7 +5,7 @@ VisualStudioVersion = 18.1.11304.174 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotCPU", "HotCPU.csproj", "{728ACA8C-1056-4EEA-9283-922D4CE0A51E}"
 EndProject
-Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "hotcpuPublish", "..\hotcpuPublish\hotcpuPublish.wapproj", "{B6D76392-9E56-45EB-8EF9-0EF3960E6440}"
+Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "hotcpuPublish", "HotCPU.Package\hotcpuPublish.wapproj", "{B6D76392-9E56-45EB-8EF9-0EF3960E6440}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
