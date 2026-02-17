@@ -10049,13 +10049,13 @@
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "1.0.8",
     "restore": {
-      "projectUniqueName": "c:\\projects\\hotcpu\\HotCPU.csproj",
+      "projectUniqueName": "C:\\projects\\hotcpu\\HotCPU.csproj",
       "projectName": "HotCPU",
-      "projectPath": "c:\\projects\\hotcpu\\HotCPU.csproj",
+      "projectPath": "C:\\projects\\hotcpu\\HotCPU.csproj",
       "packagesPath": "C:\\Users\\sinan\\.nuget\\packages\\",
-      "outputPath": "c:\\projects\\hotcpu\\obj\\",
+      "outputPath": "C:\\projects\\hotcpu\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -10132,11 +10132,11 @@
         "downloadDependencies": [
           {
             "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-            "version": "[8.0.23, 8.0.23]"
+            "version": "[8.0.24, 8.0.24]"
           },
           {
             "name": "Microsoft.NETCore.App.Runtime.win-x64",
-            "version": "[8.0.23, 8.0.23]"
+            "version": "[8.0.24, 8.0.24]"
           },
           {
             "name": "Microsoft.Windows.SDK.NET.Ref",
@@ -10144,7 +10144,7 @@
           },
           {
             "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-            "version": "[8.0.23, 8.0.23]"
+            "version": "[8.0.24, 8.0.24]"
           }
         ],
         "frameworkReferences": {
@@ -10158,7 +10158,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.417/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {

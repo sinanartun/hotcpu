@@ -37,8 +37,13 @@ namespace HotCPU
             UpdateTrayIcons();
         }
 
-        private void OnNotifyIconMouseMove(object? sender, MouseEventArgs e)
+        private void OnNotifyIconMouseClick(object? sender, MouseEventArgs e)
         {
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
             var reading = _temperatureService.CurrentReading;
             if (reading != null)
             {
@@ -69,16 +74,26 @@ namespace HotCPU
             return menu;
         }
 
+        private SettingsForm? _currentSettingsForm;
+
         private void ShowSettings()
         {
+            if (_currentSettingsForm != null && !_currentSettingsForm.IsDisposed)
+            {
+                _currentSettingsForm.BringToFront();
+                _currentSettingsForm.Activate();
+                return;
+            }
+
             var hardware = new List<HardwareTemps>();
             if (_temperatureService.CurrentReading != null)
             {
                 hardware = _temperatureService.CurrentReading.AllTemps;
             }
-
-            var form = new SettingsForm(_settings, OnSettingsChanged, hardware, _temperatureService);
-            form.ShowDialog();
+ 
+            _currentSettingsForm = new SettingsForm(_settings, OnSettingsChanged, hardware, _temperatureService);
+            _currentSettingsForm.FormClosed += (s, e) => _currentSettingsForm = null;
+            _currentSettingsForm.Show();
         }
 
         private void OnSettingsChanged()
@@ -90,9 +105,16 @@ namespace HotCPU
 
         private void OnTemperatureChanged(TemperatureReading reading)
         {
+            if (_disposed || _contextMenu.IsDisposed) return;
+
             if (_contextMenu.InvokeRequired)
             {
-                _contextMenu.Invoke(() => OnTemperatureChanged(reading));
+                try 
+                {
+                    _contextMenu.Invoke(() => OnTemperatureChanged(reading));
+                }
+                catch (ObjectDisposedException) { }
+                catch (InvalidOperationException) { }
                 return;
             }
 
@@ -132,7 +154,7 @@ namespace HotCPU
                 if (_notifyIcons.TryGetValue(key, out var icon))
                 {
                     icon.DoubleClick -= OnNotifyIconDoubleClick;
-                    icon.MouseMove -= OnNotifyIconMouseMove;
+                    icon.MouseClick -= OnNotifyIconMouseClick;
                     icon.Visible = false;
                     icon.Icon?.Dispose();
                     icon.Dispose();
@@ -153,7 +175,7 @@ namespace HotCPU
                         Text = "HotCPU"
                     };
                     newIcon.DoubleClick += OnNotifyIconDoubleClick;
-                    newIcon.MouseMove += OnNotifyIconMouseMove;
+                    newIcon.MouseClick += OnNotifyIconMouseClick;
                     _notifyIcons[id] = newIcon;
                 }
 
@@ -268,7 +290,7 @@ namespace HotCPU
             foreach (var icon in _notifyIcons.Values)
             {
                 icon.DoubleClick -= OnNotifyIconDoubleClick;
-                icon.MouseMove -= OnNotifyIconMouseMove;
+                icon.MouseClick -= OnNotifyIconMouseClick;
                 icon.Visible = false;
                 icon.Icon?.Dispose();
                 icon.Dispose();

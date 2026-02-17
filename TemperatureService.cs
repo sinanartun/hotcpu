@@ -301,7 +301,7 @@ namespace HotCPU
         // History tracking
         private readonly Dictionary<string, Queue<float>> _sensorHistory = new();
         private readonly Dictionary<string, DateTime> _sensorLastSeen = new();
-        private const int MAX_HISTORY = 30;
+        internal const int MAX_HISTORY = 60;
         private const int STALE_SENSOR_THRESHOLD_MINUTES = 5;
         private DateTime _lastCleanup = DateTime.UtcNow;
 

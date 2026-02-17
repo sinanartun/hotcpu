@@ -32,31 +32,31 @@ namespace HotCPU
             }
         }
 
-        private static readonly Dictionary<float, Font> _fontCache = new();
+        private static readonly Dictionary<(float, string, FontStyle), Font> _fontCache = new();
 
-        private static Font GetFont(float sizePx)
+        private static Font GetFont(float sizePx, string fontFamily, FontStyle style)
         {
-            if (_fontCache.TryGetValue(sizePx, out var cachedFont))
+            var key = (sizePx, fontFamily, style);
+            if (_fontCache.TryGetValue(key, out var cachedFont))
                 return cachedFont;
 
             Font font;
             try 
             { 
-                font = new Font("Segoe UI Variable Text", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); 
+                font = new Font(fontFamily, sizePx, style, GraphicsUnit.Pixel); 
             }
             catch 
             {
-                try 
-                { 
-                    font = new Font("Segoe UI Variable Display", sizePx, FontStyle.Regular, GraphicsUnit.Pixel); 
-                }
+                // Fallback sequence
+                try { font = new Font("Segoe UI Variable Text", sizePx, style, GraphicsUnit.Pixel); }
                 catch 
                 {
-                    font = new Font("Segoe UI", sizePx, FontStyle.Regular, GraphicsUnit.Pixel);
+                    try { font = new Font("Segoe UI", sizePx, style, GraphicsUnit.Pixel); }
+                    catch { font = new Font(FontFamily.GenericSansSerif, sizePx, style, GraphicsUnit.Pixel); }
                 }
             }
 
-            _fontCache[sizePx] = font;
+            _fontCache[key] = font;
             return font;
         }
 
@@ -84,15 +84,8 @@ namespace HotCPU
 
         internal static Color GetDefaultTextColor(AppSettings settings)
         {
-            var mode = (settings.ThemeMode ?? "Auto").Trim().ToLowerInvariant();
-            return mode switch
-            {
-                "light" => settings.GetLightTextColorValue(),
-                "dark" => settings.GetDarkTextColorValue(),
-                _ => TryGetSystemIsLightTheme(out var isLight)
-                    ? (isLight ? settings.GetLightTextColorValue() : settings.GetDarkTextColorValue())
-                    : settings.GetDarkTextColorValue()
-            };
+            bool isDark = Helpers.ThemeHelper.IsDarkMode(settings);
+            return isDark ? settings.GetDarkTextColorValue() : settings.GetLightTextColorValue();
         }
 
         private static Color InterpolateColor(Color from, Color to, float value, int min, int max)
@@ -141,23 +134,24 @@ namespace HotCPU
             int lengthForSizing = line1?.Length ?? 0;
             float baseSize = lengthForSizing switch
             {
-                <= 2 => settings.FontSize + 4,
-                3 => settings.FontSize + 2,
-                4 => settings.FontSize + 1,
-                _ => settings.FontSize
+                <= 2 => settings.FontSize + 8, // Slightly reduced from +10 to prevent clipping
+                3 => settings.FontSize + 5,
+                4 => settings.FontSize + 3,
+                _ => settings.FontSize + 1
             };
             if (!string.IsNullOrEmpty(line1) && (line1.Contains('↑') || line1.Contains('↓')))
                 baseSize -= 1;
             if (isMultiLine)
                 baseSize -= 1;
             if (!renderBadge)
-                baseSize += 2;
+                baseSize += 3;
 
             float fontSize = baseSize * scale;
-            var font = GetFont(fontSize);
+            var font = GetFont(fontSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
 
-            // Adjust vertical position - larger fonts need to be moved up slightly
-            int yOffset = settings.FontSize >= 14 ? -1 : 0;
+            // Adjust vertical position - center it better
+            int yOffset = 0; 
+            // settings.FontSize >= 14 ? -1 : 0; // Removed aggressive offset
             yOffset = (int)Math.Round(yOffset * scale);
             var flags = TextFormatFlags.NoPadding |
                         TextFormatFlags.HorizontalCenter |
@@ -170,9 +164,9 @@ namespace HotCPU
             if (!string.IsNullOrWhiteSpace(text))
             {
                 // Badge mode: draw opaque rounded rectangle so ClearType can kick in.
-                var badgeBack = renderBadge ? GetTaskbarBackgroundColor() : Color.Transparent;
-                var badgeBorder = renderBadge ? AdjustColor(badgeBack, -25) : Color.Transparent;
-                var paddingX = 0;
+                var badgeBack = Color.Transparent; // Fully transparent as requested
+                var badgeBorder = Color.Transparent;
+                var paddingX = 0; // Reset to 0 to prevent clipping
                 var paddingY = 0;
 
                 var measureFlags = TextFormatFlags.NoPadding | TextFormatFlags.SingleLine;
@@ -186,15 +180,16 @@ namespace HotCPU
                     float unitScale = 0.55f;
                     float fitValueSize = fontSize;
                     float fitUnitSize = Math.Max(5f, fitValueSize * unitScale);
-                    var valueFont = GetFont(fitValueSize);
-                    var unitFont = GetFont(fitUnitSize);
+                    var valueFont = GetFont(fitValueSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
+                    var unitFont = GetFont(fitUnitSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
                     lineGap = Math.Max(0, (int)Math.Round(scale * 0.25f));
 
                     textSize = TextRenderer.MeasureText(g, line1, valueFont, new Size(int.MaxValue, int.MaxValue), measureFlags);
                     unitSize = TextRenderer.MeasureText(g, line2, unitFont, new Size(int.MaxValue, int.MaxValue), measureFlags);
 
                     int guard = 12;
-                    int available = Math.Max(1, iconSize - 1);
+                    // Slightly reduce available width to ensure no clipping
+                    int available = Math.Max(1, iconSize - 1); 
                     while ((Math.Max(textSize.Width, unitSize.Width) + (paddingX * 2) > available
                             || (textSize.Height + unitSize.Height + lineGap + (paddingY * 2) > available))
                            && guard-- > 0)
@@ -202,8 +197,8 @@ namespace HotCPU
                         fitValueSize -= Math.Max(1f, scale);
                         if (fitValueSize < 6f) break;
                         fitUnitSize = Math.Max(5f, fitValueSize * unitScale);
-                        valueFont = GetFont(fitValueSize);
-                        unitFont = GetFont(fitUnitSize);
+                        valueFont = GetFont(fitValueSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
+                        unitFont = GetFont(fitUnitSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
                         textSize = TextRenderer.MeasureText(g, line1, valueFont, new Size(int.MaxValue, int.MaxValue), measureFlags);
                         unitSize = TextRenderer.MeasureText(g, line2, unitFont, new Size(int.MaxValue, int.MaxValue), measureFlags);
                     }
@@ -218,12 +213,13 @@ namespace HotCPU
                     // If it doesn't fit, scale down a bit.
                     float fitFontSize = fontSize;
                     int guard = 12;
-                    int available = Math.Max(1, iconSize - 1);
+                    int available = Math.Max(1, iconSize - 1); // Safety margin
                     while ((textSize.Width + (paddingX * 2) > available || textSize.Height + (paddingY * 2) > available) && guard-- > 0)
                     {
-                        fitFontSize -= Math.Max(1f, scale);
+                        fitFontSize -= Math.Max(0.5f, scale * 0.5f);
+
                         if (fitFontSize < 6f) break;
-                        font = GetFont(fitFontSize);
+                        font = GetFont(fitFontSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
                         textSize = TextRenderer.MeasureText(g, text, font, new Size(int.MaxValue, int.MaxValue), measureFlags);
                     }
                 }
@@ -249,7 +245,7 @@ namespace HotCPU
                 {
                     float unitScale = 0.55f;
                     float unitFontSize = finalUnitFontSize > 0f ? finalUnitFontSize : Math.Max(5f, font.Size * unitScale);
-                    var unitFont = GetFont(unitFontSize);
+                    var unitFont = GetFont(unitFontSize, settings.TrayFontFamily, (FontStyle)settings.TrayFontStyle);
                     int totalHeight = textSize.Height + unitSize.Height + lineGap;
                     int startY = textRect.Y + (textRect.Height - totalHeight) / 2;
                     var valueRect = new Rectangle(textRect.X, startY, textRect.Width, textSize.Height);
@@ -540,53 +536,6 @@ namespace HotCPU
             int g = Math.Clamp(color.G + delta, 0, 255);
             int b = Math.Clamp(color.B + delta, 0, 255);
             return Color.FromArgb(255, r, g, b);
-        }
-
-        private static bool TryGetSystemIsLightTheme(out bool isLight)
-        {
-            isLight = false;
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                if (key != null)
-                {
-                    if (TryReadDword(key, "SystemUsesLightTheme", out int systemValue))
-                    {
-                        isLight = systemValue != 0;
-                        return true;
-                    }
-                    if (TryReadDword(key, "AppsUseLightTheme", out int appsValue))
-                    {
-                        isLight = appsValue != 0;
-                        return true;
-                    }
-                }
-            }
-            catch { }
-            return false;
-        }
-
-        private static bool TryReadDword(RegistryKey key, string name, out int value)
-        {
-            value = 0;
-            try
-            {
-                var raw = key.GetValue(name);
-                switch (raw)
-                {
-                    case int i:
-                        value = i;
-                        return true;
-                    case byte b:
-                        value = b;
-                        return true;
-                    case long l:
-                        value = (int)l;
-                        return true;
-                }
-            }
-            catch { }
-            return false;
         }
 
         private static GraphicsPath CreateRoundedRectPath(Rectangle rect, int radius)

@@ -1,0 +1,53 @@
+    Checking hotcpu v0.1.0 (C:\projects\decom\hotcpu)
+error[E0425]: cannot find type `Sender` in this scope
+  --> src\renderer.rs:51:19
+   |
+51 | pub fn render(tx: Sender<RenderMessage>, scene: &Scene) {
+   |                   ^^^^^^
+   |
+  --> /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c\library\core\src\marker.rs:95:1
+   |
+   = note: similarly named trait `Send` defined here
+help: a trait with a similar name exists
+   |
+51 - pub fn render(tx: Sender<RenderMessage>, scene: &Scene) {
+51 + pub fn render(tx: Send<RenderMessage>, scene: &Scene) {
+   |
+help: consider importing one of these structs
+   |
+ 1 + use crate::Sender;
+   |
+ 1 + use std::sync::mpmc::Sender;
+   |
+ 1 + use std::sync::mpsc::Sender;
+   |
+
+error[E0599]: no method named `shuffle` found for struct `std::vec::Vec<(u32, u32)>` in the current scope
+  --> src\renderer.rs:86:11
+   |
+86 |     tiles.shuffle(&mut rng);
+   |           ^^^^^^^ method not found in `std::vec::Vec<(u32, u32)>`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `SliceRandom` which provides `shuffle` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use rand::prelude::SliceRandom;
+   |
+
+error[E0282]: type annotations needed
+   --> src\renderer.rs:89:54
+    |
+ 89 |     tiles.into_par_iter().for_each_with(tx.clone(), |s, (tile_x, tile_y)| {
+    |                                                      ^
+...
+125 |         let _ = s.send(RenderMessage::Tile {
+    |                 - type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+ 89 |     tiles.into_par_iter().for_each_with(tx.clone(), |s: /* Type */, (tile_x, tile_y)| {
+    |                                                       ++++++++++++
+
+Some errors have detailed explanations: E0282, E0425, E0599.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `hotcpu` (bin "hotcpu") due to 3 previous errors

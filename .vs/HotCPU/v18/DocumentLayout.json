@@ -3,12 +3,19 @@
   "WorkspaceRootPath": "C:\\projects\\hotcpu\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\sinan\\AppData\\Local\\Temp\\1\\.vsdbgsrc\\a7491f50b4ab885aabf6bab39fc46c37e78a331923db04e06f40b59e8611ecd4\\Control.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\trayiconmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:trayiconmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\settingsform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:settingsform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\trayicongenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:trayicongenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -21,30 +28,55 @@
           "SelectedChildIndex": 1,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "SettingsForm.cs",
-              "DocumentMoniker": "C:\\projects\\hotcpu\\SettingsForm.cs",
-              "RelativeDocumentMoniker": "SettingsForm.cs",
-              "ToolTip": "C:\\projects\\hotcpu\\SettingsForm.cs",
-              "RelativeToolTip": "SettingsForm.cs",
-              "ViewState": "AgIAABEBAAAAAAAAAAAAwCIBAAAJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-03T12:45:10.855Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Control.cs",
+              "DocumentMoniker": "C:\\Users\\sinan\\AppData\\Local\\Temp\\1\\.vsdbgsrc\\a7491f50b4ab885aabf6bab39fc46c37e78a331923db04e06f40b59e8611ecd4\\Control.cs",
+              "RelativeDocumentMoniker": "..\\..\\Users\\sinan\\AppData\\Local\\Temp\\1\\.vsdbgsrc\\a7491f50b4ab885aabf6bab39fc46c37e78a331923db04e06f40b59e8611ecd4\\Control.cs",
+              "ToolTip": "C:\\Users\\sinan\\AppData\\Local\\Temp\\1\\.vsdbgsrc\\a7491f50b4ab885aabf6bab39fc46c37e78a331923db04e06f40b59e8611ecd4\\Control.cs",
+              "RelativeToolTip": "..\\..\\Users\\sinan\\AppData\\Local\\Temp\\1\\.vsdbgsrc\\a7491f50b4ab885aabf6bab39fc46c37e78a331923db04e06f40b59e8611ecd4\\Control.cs",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T20:33:04.919Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "TrayIconGenerator.cs",
+              "DocumentMoniker": "C:\\projects\\hotcpu\\TrayIconGenerator.cs",
+              "RelativeDocumentMoniker": "TrayIconGenerator.cs",
+              "ToolTip": "C:\\projects\\hotcpu\\TrayIconGenerator.cs",
+              "RelativeToolTip": "TrayIconGenerator.cs",
+              "ViewState": "AgIAAMYAAAAAAAAAAAAmwN0AAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T19:22:45.31Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "TrayIconManager.cs",
               "DocumentMoniker": "C:\\projects\\hotcpu\\TrayIconManager.cs",
               "RelativeDocumentMoniker": "TrayIconManager.cs",
               "ToolTip": "C:\\projects\\hotcpu\\TrayIconManager.cs",
               "RelativeToolTip": "TrayIconManager.cs",
-              "ViewState": "AgIAALQAAAAAAAAAAAAkwNsAAAA2AAAAAAAAAA==",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAhwHAAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-03T12:40:46.406Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-03T18:53:03.525Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "SettingsForm.cs",
+              "DocumentMoniker": "C:\\projects\\hotcpu\\SettingsForm.cs",
+              "RelativeDocumentMoniker": "SettingsForm.cs",
+              "ToolTip": "C:\\projects\\hotcpu\\SettingsForm.cs",
+              "RelativeToolTip": "SettingsForm.cs",
+              "ViewState": "AgIAAHoEAAAAAAAAAAAAwGYEAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T18:33:25.229Z"
             }
           ]
         }

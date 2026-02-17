@@ -17,12 +17,14 @@ namespace HotCPU
 
         // Settings properties
         public int RefreshIntervalMs { get; set; } = 1000;
-        public int WarmThreshold { get; set; } = 60;
-        public int HotThreshold { get; set; } = 80;
-        public int CriticalThreshold { get; set; } = 90;
+        public int WarmThreshold { get; set; } = 55;
+        public int HotThreshold { get; set; } = 65;
+        public int CriticalThreshold { get; set; } = 78;
         public bool StartWithWindows { get; set; } = false;
         public int FontSize { get; set; } = 14;
         public bool ShowTrayIconTemperature { get; set; } = true;
+        public string TrayFontFamily { get; set; } = "Segoe UI"; // Default font
+        public int TrayFontStyle { get; set; } = 0; // 0=Regular, 1=Bold, 2=Italic, etc.
         public string ThemeMode { get; set; } = "Auto"; // Auto, Light, Dark
         public int LightTextColor { get; set; } = unchecked((int)0xFF000000); // Black
         public int DarkTextColor { get; set; } = unchecked((int)0xFFFFFFFF); // White
@@ -41,11 +43,17 @@ namespace HotCPU
         public bool LogMax { get; set; } = false;
         
         // Color settings (stored as ARGB integers for JSON serialization)
-        public int CoolColor { get; set; } = unchecked((int)0xFFFFFFFF);  // White
-        public int WarmColor { get; set; } = unchecked((int)0xFFFFA500);  // Orange
-        public int HotColor { get; set; } = unchecked((int)0xFFFF4500);   // Red-Orange
+        public int CoolColor { get; set; } = unchecked((int)0xFF00FFFF);  // Cyan
+        public int WarmColor { get; set; } = unchecked((int)0xFF00FF00);  // Green
+        public int HotColor { get; set; } = unchecked((int)0xFFFFA500);   // Orange
         public int CriticalColor { get; set; } = unchecked((int)0xFFFF0000); // Red
-        public bool UseGradientColors { get; set; } = false;  // Default to white only
+
+        public bool UseGradientColors { get; set; } = true;  // Default to gradients enabled
+
+        // Graph Scaling Settings
+        public int CpuTdp { get; set; } = 125; // Watts
+        public int CpuBaseClock { get; set; } = 3500; // MHz
+        public int CpuBoostClock { get; set; } = 5500; // MHz
 
         public System.Drawing.Color GetCoolColorValue() => System.Drawing.Color.FromArgb(CoolColor);
         public System.Drawing.Color GetWarmColorValue() => System.Drawing.Color.FromArgb(WarmColor);

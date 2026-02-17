@@ -11,9 +11,9 @@ namespace HotCPU.Tests
             var settings = new AppSettings();
             
             Assert.Equal(1000, settings.RefreshIntervalMs);
-            Assert.Equal(60, settings.WarmThreshold);
-            Assert.Equal(80, settings.HotThreshold);
-            Assert.Equal(90, settings.CriticalThreshold);
+            Assert.Equal(55, settings.WarmThreshold);
+            Assert.Equal(65, settings.HotThreshold);
+            Assert.Equal(78, settings.CriticalThreshold);
             Assert.Equal(14, settings.FontSize);
         }
 
