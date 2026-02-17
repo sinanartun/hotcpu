@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("A lightweight system tray application to monitor CPU temperature")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22979031beb91e5690e431c8f2e447a906209e84")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bc63f7e539dfec856c8450f6c8b84f0e79252340")]
 [assembly: System.Reflection.AssemblyProductAttribute("HotCPU - CPU Temperature Monitor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HotCPU")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

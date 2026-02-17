@@ -28,7 +28,7 @@ namespace HotCPU
             this.TransparencyKey = Color.Magenta;
 
             var timer = new System.Windows.Forms.Timer();
-            timer.Interval = 3000; // 3 seconds
+            timer.Interval = 1000; // 1 second
             timer.Tick += (s, e) => 
             {
                 timer.Stop();

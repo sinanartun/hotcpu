@@ -147,10 +147,39 @@ namespace HotCPU
                     if (name.Length > 28) name = name.Substring(0, 25) + "...";
                     g.DrawString(name, _fontNormal, brushDim, xName, y);
 
-                    string val = $"{sensor.RoundedTemp}°C";
-                    g.DrawString(val, _fontBold, brushText, xValue, y);
+                    // string val = $"{sensor.RoundedTemp}°C";
+                    string valStr = sensor.Unit == "°C" || sensor.Unit == "%" || sensor.Unit == "RPM" 
+                         ? sensor.RoundedValue.ToString() 
+                         : sensor.Value.ToString("F1");
+                    
+                    g.DrawString($"{valStr}{sensor.Unit}", _fontBold, brushText, xValue, y);
 
-                    DrawSparkline(g, xChart, y, chartWidth, rowHeight - 2, sensor.History, sensor.Temperature);
+                    // Determine color based on type/unit if possible, or just passed value
+                    Color chartColor = Color.DeepSkyBlue;
+                    if (sensor.Unit == "°C")
+                    {
+                         chartColor = sensor.Value switch
+                         {
+                            < 60 => Color.DeepSkyBlue,
+                            < 80 => Color.Orange,
+                            _ => Color.Red
+                         };
+                    }
+                    else if (sensor.Unit == "%")
+                    {
+                        chartColor = sensor.Value switch
+                        {
+                            < 50 => Color.LimeGreen,
+                            < 80 => Color.Orange,
+                            _ => Color.Red
+                        };
+                    }
+                    else
+                    {
+                         chartColor = Color.LightGreen;
+                    }
+
+                    DrawSparkline(g, xChart, y, chartWidth, rowHeight - 2, sensor.History, sensor.Temperature, chartColor);
 
                     y += rowHeight;
                 }
@@ -164,7 +193,7 @@ namespace HotCPU
              return !_currentReading.Settings.HiddenSensorIds.Contains(s.Identifier);
         }
 
-        private void DrawSparkline(Graphics g, float x, float y, float w, float h, float[] history, float current)
+        private void DrawSparkline(Graphics g, float x, float y, float w, float h, float[] history, float current, Color color)
         {
             using var bgBrush = new SolidBrush(Color.FromArgb(30, 30, 30));
             g.FillRectangle(bgBrush, x, y, w, h);
@@ -194,12 +223,12 @@ namespace HotCPU
                 points[i] = new PointF(px, py);
             }
 
-            var color = current switch
-            {
-               < 60 => Color.DeepSkyBlue,
-               < 80 => Color.Orange,
-               _ => Color.Red
-            };
+            // var color = current switch
+            // {
+            //    < 60 => Color.DeepSkyBlue,
+            //    < 80 => Color.Orange,
+            //    _ => Color.Red
+            // };
             using var pen = new Pen(color, 1.5f);
             g.DrawLines(pen, points);
             var last = points.Last();

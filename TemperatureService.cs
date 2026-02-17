@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Management;
 using System.Timers;
+using System.Diagnostics;
 using LibreHardwareMonitor.Hardware;
 using NvAPIWrapper;
 using NvAPIWrapper.GPU;
@@ -13,10 +14,17 @@ namespace HotCPU
     {
         private readonly Computer _computer;
         private readonly System.Timers.Timer _timer;
+        private readonly PerformanceCounterCategory? _thermalCategory;
         private readonly AppSettings _settings;
         private bool _disposed;
         private bool _isNvApiInitialized;
         private string _cachedCpuName = "CPU";
+        // WMI Circuit Breakers - disabled by default to prevent "Not supported" exceptions
+        // and ensure Windows Store compliance (Non-Admin). 
+        // We now rely on Performance Counters for motherboard thermal zones.
+        private bool _wmiThermalFailed = true;
+        private bool _wmiStorageFailed = true;
+        private bool _wmiCimFailed = true;
 
         public event Action<TemperatureReading>? TemperatureChanged;
         public TemperatureReading CurrentReading { get; private set; } = new(0, "Initializing...", null, new List<HardwareTemps>());
@@ -34,12 +42,22 @@ namespace HotCPU
                 IsMotherboardEnabled = true,
                 IsStorageEnabled = true,
                 // Disabled to reduce memory footprint:
-                IsNetworkEnabled = false,
-                IsControllerEnabled = false,
-                IsMemoryEnabled = false,
-                IsPsuEnabled = false,
-                IsBatteryEnabled = false
+                IsNetworkEnabled = true,
+                IsControllerEnabled = true,
+                IsMemoryEnabled = true,
+                IsPsuEnabled = true,
+                IsBatteryEnabled = true
             };
+
+            // Initialize Performance Counters
+            try
+            {
+                if (PerformanceCounterCategory.Exists("Thermal Zone Information"))
+                {
+                    _thermalCategory = new PerformanceCounterCategory("Thermal Zone Information");
+                }
+            }
+            catch { /* Ignore permission errors */ }
 
             // Try Initialize NvAPI
             try
@@ -57,7 +75,7 @@ namespace HotCPU
 
             _timer = new System.Timers.Timer(_settings.RefreshIntervalMs);
             _timer.Elapsed += OnTimerElapsed;
-            _timer.AutoReset = true;
+            _timer.AutoReset = false; // Prevent reentrancy
         }
 
         public void Start()
@@ -77,7 +95,22 @@ namespace HotCPU
 
         public void Stop() => _timer.Stop();
         public void UpdateInterval(int intervalMs) => _timer.Interval = intervalMs;
-        private void OnTimerElapsed(object? sender, ElapsedEventArgs e) => UpdateTemperature();
+        private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
+        {
+            if (_disposed) return;
+            try 
+            {
+                UpdateTemperature();
+            }
+            finally
+            {
+                // Only restart if not disposed
+                if (!_disposed)
+                {
+                    try { _timer.Start(); } catch { }
+                }
+            }
+        }
 
         private void UpdateTemperature()
         {
@@ -92,6 +125,9 @@ namespace HotCPU
                 {
                     hardware.Update();
                     
+                    // Debug: Log ALL hardware detected before filtering
+                    System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] Hardware: {hardware.Name}, Type: {hardware.HardwareType}, RawSensors: {hardware.Sensors.Length}, SubHW: {hardware.SubHardware.Length}");
+                    
                     var hwTemps = new HardwareTemps(
                         HotCPU.Helpers.StringHelper.SimplifyHardwareName(hardware.Name),
                         GetHardwareTypeIcon(hardware.HardwareType),
@@ -102,6 +138,9 @@ namespace HotCPU
 
                     // Check sub-hardware recursively
                     CollectSubHardware(hardware, hwTemps);
+                    
+                    // Debug: Log after filtering
+                    System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] -> After filter: {hwTemps.Sensors.Count} sensors");
 
                     if (hwTemps.Sensors.Any())
                         allHardwareTemps.Add(hwTemps);
@@ -126,41 +165,57 @@ namespace HotCPU
                     catch { }
                 }
 
-                // === WMI Temperature Sensors (Backup Source for Thermal Zones) ===
-                try
+                // === Performance Counters (Non-Admin Fallback for Motherboard) ===
+                if (_thermalCategory != null)
                 {
-                    var wmiTemps = GetWmiTemperatures();
-                    if (wmiTemps.Sensors.Any())
+                    try
+                    {
+                        var perfTemps = GetPerformanceCounterTemperatures();
+                        if (perfTemps.Sensors.Any())
+                            allHardwareTemps.Add(perfTemps);
+                    }
+                    catch { }
+                }
+
+                // === WMI Temperature Sensors (Backup Source for Thermal Zones) ===
+                if (!_wmiThermalFailed)
+                {
+                    var (wmiTemps, failed) = GetWmiTemperatures();
+                    if (failed)
+                        _wmiThermalFailed = true;
+                    else if (wmiTemps.Sensors.Any())
                         allHardwareTemps.Add(wmiTemps);
                 }
-                catch { }
 
                 // === WMI Storage Temperatures (Backup for Disks) ===
-                try
+                if (!_wmiStorageFailed)
                 {
-                    var diskTemps = GetStorageTemperaturesFromWmi();
-                    if (diskTemps.Sensors.Any())
+                    var (diskTemps, failed) = GetStorageTemperaturesFromWmi();
+                    if (failed)
+                        _wmiStorageFailed = true;
+                    else if (diskTemps.Sensors.Any())
                         allHardwareTemps.Add(diskTemps);
                 }
-                catch { }
 
                 // === CIMv2 Thermal Zone Information (Standard User Friendly) ===
-                try
+                if (!_wmiCimFailed)
                 {
-                    var cimTemps = GetCimTemperatures();
-                    if (cimTemps.Sensors.Any())
+                    var (cimTemps, failed) = GetCimTemperatures();
+                    if (failed)
+                        _wmiCimFailed = true;
+                    else if (cimTemps.Sensors.Any())
                         allHardwareTemps.Add(cimTemps);
                 }
-                catch { }
 
                 // Check if we have any real CPU
                 bool hasCpu = allHardwareTemps.Any(h => h.Type == "Cpu" && h.Sensors.Any());
 
-                // Fallback: If no CPU temp found, usage the MAX of any available sensor AND create a simulated CPU entry
+                // Fallback: If no CPU temp found, use the MAX of any available TEMPERATURE sensor
                 if (!hasCpu || mainCpuTemp == null || mainCpuTemp <= 0)
                 {
                     var maxSensor = allHardwareTemps
                         .SelectMany(h => h.Sensors)
+                        .Where(s => s.Type == "Temperature" && s.Value > 0 && s.Value < 200) // Only valid temps
                         .OrderByDescending(s => s.Temperature)
                         .FirstOrDefault();
                     
@@ -176,7 +231,9 @@ namespace HotCPU
                         
                         simCpu.Sensors.Add(new SensorTemp(
                             "Core", 
-                            maxSensor.Temperature, 
+                            maxSensor.Temperature,  // Use Temperature, not raw Value
+                            "Temperature",          // Correct type
+                            "°C",
                             GetHistory(simId), 
                             simId));
                         
@@ -230,7 +287,7 @@ namespace HotCPU
                             var id = $"NvAPI_{name}_{sensor.Target}";
                             UpdateHistory(id, temp);
 
-                            nvTemps.Sensors.Add(new SensorTemp(sensorName, temp, GetHistory(id), id));
+                            nvTemps.Sensors.Add(new SensorTemp(sensorName, temp, "Temperature", "°C", GetHistory(id), id));
                         }
                     }
                     catch { }
@@ -291,23 +348,108 @@ namespace HotCPU
                 : Array.Empty<float>();
         }
 
+        /// <summary>
+        /// Logs weird/invalid sensor data to Debug output for troubleshooting.
+        /// </summary>
+        [System.Diagnostics.Conditional("DEBUG")]
+        private void LogWeirdSensor(string reason, string sensorName, string? sensorId, SensorType sensorType, float value, string? hardwareName = null)
+        {
+            var hw = hardwareName != null ? $" [{hardwareName}]" : "";
+            var msg = $"[HotCPU SENSOR]{hw} {reason}: {sensorName} (Type: {sensorType}, Value: {value}, ID: {sensorId ?? "N/A"})";
+            System.Diagnostics.Debug.WriteLine(msg);
+        }
+
         private void CollectAllSensors(IHardware hardware, HardwareTemps hwTemps)
         {
             foreach (var sensor in hardware.Sensors)
             {
-                if (sensor.SensorType == SensorType.Temperature && sensor.Value.HasValue)
+                if (sensor.Value.HasValue)
                 {
-                    // Filter out invalid readings (255 is a common error value, or 0/negative)
-                    if (sensor.Value.Value <= 0 || sensor.Value.Value >= 200) continue;
-
+                    var val = sensor.Value.Value;
                     var id = sensor.Identifier.ToString();
-                    UpdateHistory(id, sensor.Value.Value);
+                    
+                    // Check for weird temperature readings
+                    if (sensor.SensorType == SensorType.Temperature)
+                    {
+                        if (val <= 0)
+                        {
+                            LogWeirdSensor("SKIPPED (temp <= 0)", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                            continue;
+                        }
+                        if (val >= 200)
+                        {
+                            LogWeirdSensor("SKIPPED (temp >= 200)", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                            continue;
+                        }
+                    }
+                    
+                    // Check for weird voltage readings (should be 0-20V typically)
+                    if (sensor.SensorType == SensorType.Voltage && (val < -1 || val > 50))
+                    {
+                        LogWeirdSensor("WEIRD VOLTAGE", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                    }
+                    
+                    // Check for weird fan readings (should be 0-10000 RPM typically)
+                    if (sensor.SensorType == SensorType.Fan && val > 20000)
+                    {
+                        LogWeirdSensor("WEIRD FAN RPM", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                    }
+                    
+                    // Check for weird power readings (should be 0-2000W typically)
+                    if (sensor.SensorType == SensorType.Power && (val < 0 || val > 5000))
+                    {
+                        LogWeirdSensor("WEIRD POWER", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                    }
+                    
+                    // Check for weird clock readings (should be 0-20000 MHz - GDDR7 runs at ~15000+ MHz)
+                    if (sensor.SensorType == SensorType.Clock && (val < 0 || val > 20000))
+                    {
+                        LogWeirdSensor("WEIRD CLOCK", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                    }
+                    
+                    // Check for weird load readings (should be 0-100%)
+                    if (sensor.SensorType == SensorType.Load && (val < 0 || val > 100))
+                    {
+                        LogWeirdSensor("WEIRD LOAD %", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                    }
+
+                    UpdateHistory(id, val);
 
                     var simplifiedName = HotCPU.Helpers.StringHelper.CleanSensorName(sensor.Name, hwTemps.Name);
+                    var type = sensor.SensorType.ToString();
+                    var unit = GetUnitForSensorType(sensor.SensorType);
+
+                    // Safety Check: If unit is Celsius but value is garbage (driver bug), skip it
+                    if (unit == "°C" && (val <= 0 || val >= 200)) 
+                    {
+                        LogWeirdSensor("HIDDEN (bad temp in °C unit)", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                        continue;
+                    }
+                    
+                    // Final sanity check for extreme values - only for sensor types with known bounds
+                    // (Throughput can be 100s of MB/s, Data can be 100s of GB, etc.)
+                    bool isExtreme = sensor.SensorType switch
+                    {
+                        SensorType.Temperature => val > 500 || val < -50,  // -50 to 500°C
+                        SensorType.Voltage => val > 100 || val < -50,      // -50 to 100V
+                        SensorType.Power => val > 10000 || val < -100,     // -100 to 10000W
+                        SensorType.Fan => val > 50000,                      // 0 to 50000 RPM
+                        SensorType.Load => val > 200 || val < -10,          // -10 to 200%
+                        SensorType.Clock => val > 50000 || val < -100,      // -100 to 50000 MHz
+                        _ => false  // Don't block other types (Throughput, Data, etc.)
+                    };
+                    
+                    if (isExtreme)
+                    {
+                        LogWeirdSensor("BLOCKED (extreme value)", sensor.Name, id, sensor.SensorType, val, hardware.Name);
+                        continue;
+                    }
 
                     hwTemps.Sensors.Add(new SensorTemp(
                         simplifiedName, 
-                        sensor.Value.Value,
+                        val,
+                        type,
+                        unit,
                         GetHistory(id),
                         id));
                 }
@@ -322,10 +464,56 @@ namespace HotCPU
                 
                 foreach (var sensor in subHardware.Sensors)
                 {
-                    if (sensor.SensorType == SensorType.Temperature && sensor.Value.HasValue)
+                    if (sensor.Value.HasValue)
                     {
-                        // Filter out invalid readings
-                        if (sensor.Value.Value <= 0 || sensor.Value.Value >= 200) continue;
+                        var val = sensor.Value.Value;
+                        var id = sensor.Identifier.ToString();
+                        var hwName = $"{hardware.Name}/{subHardware.Name}";
+                        
+                        // Check for weird temperature readings
+                        if (sensor.SensorType == SensorType.Temperature)
+                        {
+                            if (val <= 0)
+                            {
+                                LogWeirdSensor("SKIPPED (temp <= 0)", sensor.Name, id, sensor.SensorType, val, hwName);
+                                continue;
+                            }
+                            if (val >= 200)
+                            {
+                                LogWeirdSensor("SKIPPED (temp >= 200)", sensor.Name, id, sensor.SensorType, val, hwName);
+                                continue;
+                            }
+                        }
+                        
+                        // Check for weird voltage readings
+                        if (sensor.SensorType == SensorType.Voltage && (val < -1 || val > 50))
+                        {
+                            LogWeirdSensor("WEIRD VOLTAGE", sensor.Name, id, sensor.SensorType, val, hwName);
+                        }
+                        
+                        // Check for weird fan readings
+                        if (sensor.SensorType == SensorType.Fan && val > 20000)
+                        {
+                            LogWeirdSensor("WEIRD FAN RPM", sensor.Name, id, sensor.SensorType, val, hwName);
+                        }
+                        
+                        // Check for weird power readings
+                        if (sensor.SensorType == SensorType.Power && (val < 0 || val > 5000))
+                        {
+                            LogWeirdSensor("WEIRD POWER", sensor.Name, id, sensor.SensorType, val, hwName);
+                        }
+                        
+                        // Check for weird clock readings (should be 0-20000 MHz - GDDR7 runs at ~15000+ MHz)
+                        if (sensor.SensorType == SensorType.Clock && (val < 0 || val > 20000))
+                        {
+                            LogWeirdSensor("WEIRD CLOCK", sensor.Name, id, sensor.SensorType, val, hwName);
+                        }
+                        
+                        // Check for weird load readings
+                        if (sensor.SensorType == SensorType.Load && (val < 0 || val > 100))
+                        {
+                            LogWeirdSensor("WEIRD LOAD %", sensor.Name, id, sensor.SensorType, val, hwName);
+                        }
 
                         var name = sensor.Name;
 
@@ -357,12 +545,41 @@ namespace HotCPU
                         
                         var simplifiedSensor = HotCPU.Helpers.StringHelper.CleanSensorName(name, subHardware.Name);
 
-                        var id = sensor.Identifier.ToString();
-                        UpdateHistory(id, sensor.Value.Value);
+                        UpdateHistory(id, val);
+                        
+                        var type = sensor.SensorType.ToString();
+                        var unit = GetUnitForSensorType(sensor.SensorType);
+
+                        // Safety Check: If unit is Celsius but value is garbage (driver bug), skip it
+                        if (unit == "°C" && (val <= 0 || val >= 200)) 
+                        {
+                            LogWeirdSensor("HIDDEN (bad temp in °C unit)", sensor.Name, id, sensor.SensorType, val, hwName);
+                            continue;
+                        }
+                        
+                        // Final sanity check for extreme values - only for sensor types with known bounds
+                        bool isExtreme = sensor.SensorType switch
+                        {
+                            SensorType.Temperature => val > 500 || val < -50,
+                            SensorType.Voltage => val > 100 || val < -50,
+                            SensorType.Power => val > 10000 || val < -100,
+                            SensorType.Fan => val > 50000,
+                            SensorType.Load => val > 200 || val < -10,
+                            SensorType.Clock => val > 50000 || val < -100,
+                            _ => false
+                        };
+                        
+                        if (isExtreme)
+                        {
+                            LogWeirdSensor("BLOCKED (extreme value)", sensor.Name, id, sensor.SensorType, val, hwName);
+                            continue;
+                        }
 
                         hwTemps.Sensors.Add(new SensorTemp(
                             simplifiedSensor, 
-                            sensor.Value.Value,
+                            val,
+                            type,
+                            unit,
                             GetHistory(id),
                             id));
                     }
@@ -372,9 +589,37 @@ namespace HotCPU
             }
         }
 
-        private HardwareTemps GetWmiTemperatures()
+        /// <summary>
+        /// Tests if a WMI class is available and queryable without throwing exceptions.
+        /// This specifically tests the MoveNext() call which is where "Not supported" errors occur.
+        /// </summary>
+        private bool IsWmiClassAvailable(string wmiNamespace, string className)
+        {
+            try
+            {
+                // Use WHERE FALSE to check class validity without triggering expensive/unsupported enumeration
+                using var searcher = new ManagementObjectSearcher(
+                    wmiNamespace,
+                    $"SELECT * FROM {className} WHERE FALSE");
+                using var collection = searcher.Get();
+                using var enumerator = collection.GetEnumerator();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private (HardwareTemps temps, bool failed) GetWmiTemperatures()
         {
             var wmiTemps = new HardwareTemps("Motherboard / ACPI", "🌡️", "WMI_ACPI");
+
+            // Check if the WMI class is available before trying to query it
+            if (!IsWmiClassAvailable(@"root\WMI", "MSAcpi_ThermalZoneTemperature"))
+            {
+                return (wmiTemps, failed: true);
+            }
 
             try
             {
@@ -384,6 +629,7 @@ namespace HotCPU
                     "SELECT * FROM MSAcpi_ThermalZoneTemperature");
 
                 using var collection = searcher.Get();
+                
                 foreach (ManagementObject obj in collection)
                 {
                     using (obj)
@@ -403,18 +649,22 @@ namespace HotCPU
                             var id = $"WMI_Process_{name}";
                             UpdateHistory(id, tempCelsius);
 
-                            wmiTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                            wmiTemps.Sensors.Add(new SensorTemp(name, tempCelsius, "Temperature", "°C", GetHistory(id), id));
                         }
                         catch { }
                     }
                 }
             }
-            catch { }
+            catch
+            {
+                // Any error during enumeration - signal failure
+                return (wmiTemps, failed: true);
+            }
 
-            return wmiTemps;
+            return (wmiTemps, failed: false);
         }
 
-        private HardwareTemps GetStorageTemperaturesFromWmi()
+        private (HardwareTemps temps, bool failed) GetStorageTemperaturesFromWmi()
         {
             var diskTemps = new HardwareTemps("Storage (WMI)", "💾", "WMI_Storage");
 
@@ -424,39 +674,53 @@ namespace HotCPU
                 // Requires Windows 8/10/11
                 using var searcher = new ManagementObjectSearcher(
                     @"root\Microsoft\Windows\Storage",
-                    "SELECT FriendlyName, Temperature FROM MSFT_PhysicalDisk WHERE Temperature > 0");
+                    "SELECT * FROM MSFT_PhysicalDisk");
 
                 using var collection = searcher.Get();
-                foreach (ManagementObject obj in collection)
+                
+                // Wrap enumeration in try-catch because MoveNext() can throw ManagementException
+                try
                 {
-                    using (obj)
+                    foreach (ManagementObject obj in collection)
                     {
-                        try
+                        using (obj)
                         {
-                            var name = obj["FriendlyName"]?.ToString() ?? "Unknown Disk";
-                            var tempObj = obj["Temperature"]; // Usually in Celsius already for this API
-                            
-                            if (tempObj != null)
+                            try
                             {
-                                var tempCelsius = Convert.ToSingle(tempObj);
-                                var id = $"WMI_Disk_{name}";
-                                UpdateHistory(id, tempCelsius);
+                                var name = obj["FriendlyName"]?.ToString() ?? "Unknown Disk";
+                                var tempObj = obj["Temperature"]; // Usually in Celsius already for this API
                                 
-                                var simpleDisk = HotCPU.Helpers.StringHelper.SimplifyHardwareName(name);
-                                
-                                diskTemps.Sensors.Add(new SensorTemp(simpleDisk, tempCelsius, GetHistory(id), id));
+                                if (tempObj != null)
+                                {
+                                    var tempCelsius = Convert.ToSingle(tempObj);
+                                    var id = $"WMI_Disk_{name}";
+                                    UpdateHistory(id, tempCelsius);
+                                    
+                                    var simpleDisk = HotCPU.Helpers.StringHelper.SimplifyHardwareName(name);
+                                    
+                                    diskTemps.Sensors.Add(new SensorTemp(simpleDisk, tempCelsius, "Temperature", "°C", GetHistory(id), id));
+                                }
                             }
+                            catch { }
                         }
-                        catch { }
                     }
                 }
+                catch (ManagementException)
+                {
+                    // WMI class not supported - signal failure
+                    return (diskTemps, failed: true);
+                }
             }
-            catch { }
+            catch
+            {
+                // Other errors - signal failure
+                return (diskTemps, failed: true);
+            }
 
-            return diskTemps;
+            return (diskTemps, failed: false);
         }
 
-        private HardwareTemps GetCimTemperatures()
+        private (HardwareTemps temps, bool failed) GetCimTemperatures()
         {
             var cimTemps = new HardwareTemps("Motherboard / ACPI (CIM)", "🌡️", "WMI_CIM");
 
@@ -469,41 +733,55 @@ namespace HotCPU
                     "SELECT Name, Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation WHERE Temperature > 0");
 
                 using var collection = searcher.Get();
-                foreach (ManagementObject obj in collection)
+                
+                // Wrap enumeration in try-catch because MoveNext() can throw ManagementException
+                try
                 {
-                    using (obj)
+                    foreach (ManagementObject obj in collection)
                     {
-                        try
+                        using (obj)
                         {
-                            var tempKelvin = Convert.ToDouble(obj["Temperature"]);
-                            // Some implementations use raw Kelvin, others might be already Celsius or scaled
-                            // Standard WMI Thermal Zone is tenths of Kelvin usually, but PerfCounters can be different.
-                            // However, Win32_PerfFormattedData_Counters_ThermalZoneInformation often mirrors MSAcpi_ThermalZoneTemperature.
-                            // Let's assume K for safety if > 200, otherwise C.
-                            
-                            float tempCelsius = (float)tempKelvin; 
-                            
-                            // If it's huge, it's likely Kelvin
-                            if (tempCelsius > 200)
-                                tempCelsius = (float)(tempKelvin - 273.15);
+                            try
+                            {
+                                var tempKelvin = Convert.ToDouble(obj["Temperature"]);
+                                // Some implementations use raw Kelvin, others might be already Celsius or scaled
+                                // Standard WMI Thermal Zone is tenths of Kelvin usually, but PerfCounters can be different.
+                                // However, Win32_PerfFormattedData_Counters_ThermalZoneInformation often mirrors MSAcpi_ThermalZoneTemperature.
+                                // Let's assume K for safety if > 200, otherwise C.
                                 
-                            // Sanity check
-                            if (tempCelsius < -50 || tempCelsius > 200) continue;
+                                float tempCelsius = (float)tempKelvin; 
+                                
+                                // If it's huge, it's likely Kelvin
+                                if (tempCelsius > 200)
+                                    tempCelsius = (float)(tempKelvin - 273.15);
+                                    
+                                // Sanity check
+                                if (tempCelsius < -50 || tempCelsius > 200) continue;
 
-                            var name = obj["Name"]?.ToString() ?? "Thermal Zone";
-                            
-                            var id = $"WMI_CIM_{name}";
-                            UpdateHistory(id, tempCelsius);
+                                var name = obj["Name"]?.ToString() ?? "Thermal Zone";
+                                
+                                var id = $"WMI_CIM_{name}";
+                                UpdateHistory(id, tempCelsius);
 
-                            cimTemps.Sensors.Add(new SensorTemp(name, tempCelsius, GetHistory(id), id));
+                                cimTemps.Sensors.Add(new SensorTemp(name, tempCelsius, "Temperature", "°C", GetHistory(id), id));
+                            }
+                            catch { }
                         }
-                        catch { }
                     }
                 }
+                catch (ManagementException)
+                {
+                    // WMI class not supported - signal failure
+                    return (cimTemps, failed: true);
+                }
             }
-            catch { }
+            catch
+            {
+                // Other errors - signal failure
+                return (cimTemps, failed: true);
+            }
 
-            return cimTemps;
+            return (cimTemps, failed: false);
         }
 
 
@@ -564,6 +842,123 @@ namespace HotCPU
             _ => "📟"
         };
 
+        public string GetFullHardwareReport()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== HotCPU Hardware Report ===");
+            sb.AppendLine($"Generated: {DateTime.Now}");
+            sb.AppendLine();
+
+            sb.AppendLine("=== LibreHardwareMonitor Sensors ===");
+            foreach (var hardware in _computer.Hardware)
+            {
+                AppendHardwareSensorsRecursive(hardware, sb, depth: 0);
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+        private void AppendHardwareSensorsRecursive(IHardware hardware, System.Text.StringBuilder sb, int depth)
+        {
+            hardware.Update();
+            var indent = new string(' ', depth * 2);
+            var sensorIndent = new string(' ', (depth + 1) * 2);
+            var label = depth == 0 ? "Hardware" : "SubHardware";
+            var typeSuffix = depth == 0 ? $" (Type: {hardware.HardwareType})" : "";
+
+            sb.AppendLine($"{indent}- {label}: {hardware.Name}{typeSuffix}");
+
+            foreach (var sensor in hardware.Sensors)
+            {
+                sb.AppendLine($"{sensorIndent}- Sensor: {sensor.Name} | Type: {sensor.SensorType} | Value: {sensor.Value}");
+            }
+
+            foreach (var subHardware in hardware.SubHardware)
+            {
+                AppendHardwareSensorsRecursive(subHardware, sb, depth + 1);
+            }
+        }
+
+        private string GetUnitForSensorType(SensorType type) => type switch
+        {
+            SensorType.Temperature => "°C",
+            SensorType.Voltage => "V",
+            SensorType.Current => "A",
+            SensorType.Power => "W",
+            SensorType.Clock => "MHz",
+            SensorType.Load => "%",
+            SensorType.Fan => "RPM",
+            SensorType.Flow => "L/h",
+            SensorType.Control => "%",
+            SensorType.Level => "%",
+            SensorType.Factor => "x",
+            SensorType.Data => "GB",
+            SensorType.SmallData => "MB",
+            SensorType.Throughput => "KB/s",
+            SensorType.TimeSpan => "s",
+            SensorType.Energy => "mWh",
+            _ => ""
+        };
+
+        private HardwareTemps GetPerformanceCounterTemperatures()
+        {
+            var temps = new HardwareTemps("Thermal Zones (Perf)", "🌡️", "ThermalZone");
+
+            try
+            {
+                if (_thermalCategory == null) return temps;
+
+                var instanceNames = _thermalCategory.GetInstanceNames();
+                System.Diagnostics.Debug.WriteLine($"[HotCPU PERF] Thermal Zone instances found: {instanceNames.Length}");
+                
+                foreach (var instance in instanceNames)
+                {
+                    try
+                    {
+                        // Some systems report duplicates or invalid names, handle gracefully
+                        using var counter = new PerformanceCounter("Thermal Zone Information", "High Precision Temperature", instance);
+                        counter.NextValue(); // First read is always 0
+                        var rawValue = counter.NextValue();
+                        
+                        // "High Precision Temperature" is typically in 1/10ths of Kelvin.
+                        // Standard: 273.15 K = 0 C. So 3010 = 301.0 K = 27.85 C.
+                        
+                        if (rawValue > 0)
+                        {
+                            float celsius = rawValue;
+
+                            // Heuristic to determine unit
+                            if (rawValue > 2000) // Likely 1/10 K (e.g. 3010)
+                            {
+                                celsius = (rawValue / 10.0f) - 273.15f;
+                            }
+                            else if (rawValue > 200) // Likely Kelvin (e.g. 301)
+                            {
+                                celsius = rawValue - 273.15f;
+                            }
+                            // Else assume Celsius
+
+                            if (celsius > -50 && celsius < 200)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[HotCPU PERF] Found Valid Temp: {instance} = {celsius}°C (Raw: {rawValue})");
+                                var id = $"Perf_TZ_{instance}";
+                                UpdateHistory(id, celsius);
+                                temps.Sensors.Add(new SensorTemp(instance, celsius, "Temperature", "°C", GetHistory(id), id));
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[HotCPU PERF] Error reading instance {instance}: {ex.Message}");
+                    }
+                }
+            }
+            catch { }
+
+            return temps;
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
@@ -581,15 +976,21 @@ namespace HotCPU
     }
 
     // Data classes
-    internal record SensorTemp(string Name, float Temperature, float[] History, string Identifier = "")
+    internal record SensorTemp(string Name, float Value, string Type, string Unit, float[] History, string Identifier = "")
     {
-        public int RoundedTemp => (int)Math.Round(Temperature);
+        public int RoundedValue => (int)Math.Round(Value);
+        // Compat property, prefer Value
+        public float Temperature => Value; 
     }
 
     internal record HardwareTemps(string Name, string Icon, string Type)
     {
         public List<SensorTemp> Sensors { get; } = new();
-        public float? MaxTemp => Sensors.Any() ? Sensors.Max(s => s.Temperature) : null;
+        public float? MaxTemp => Sensors
+            .Where(s => s.Type == "Temperature")
+            .OrderByDescending(s => s.Value)
+            .Select(s => (float?)s.Value)
+            .FirstOrDefault();
     }
 
     internal record TemperatureReading(float Temperature, string CpuName, AppSettings? Settings, List<HardwareTemps> AllTemps)
@@ -646,7 +1047,12 @@ namespace HotCPU
 
                     foreach (var sensor in sortedSensors)
                     {
-                        lines.Add($"  {sensor.Name}: {sensor.RoundedTemp}°C");
+                        // Use correct unit and formatting
+                        string val = sensor.Unit == "°C" || sensor.Unit == "%" || sensor.Unit == "RPM" 
+                             ? sensor.RoundedValue.ToString() 
+                             : sensor.Value.ToString("F1");
+
+                        lines.Add($"  {sensor.Name}: {val}{sensor.Unit}");
                     }
                 }
 
@@ -656,7 +1062,9 @@ namespace HotCPU
 
         public List<CoreTemp> CoreTemps => AllTemps
             .Where(h => h.Type == "Cpu")
-            .SelectMany(h => h.Sensors.Select(s => new CoreTemp(s.Name, s.Temperature)))
+            .SelectMany(h => h.Sensors
+                .Where(s => s.Type == "Temperature")
+                .Select(s => new CoreTemp(s.Name, s.Value)))
             .ToList();
     }
 

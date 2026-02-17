@@ -57,18 +57,20 @@ namespace HotCPU
                 };
 
                 // Individual sensors
+                // Use Name + Unit in Key to ensure uniqueness and clarity
                 foreach (var sensor in allSensors)
                 {
-                    logEntry[sensor.Name] = sensor.Temperature;
+                    string key = $"{sensor.Name} ({sensor.Unit})";
+                    logEntry[key] = sensor.Value;
                 }
 
-                // Stats
+                // Stats (Only valid if all sensors share unit, but users can mix. We log generic 'Value')
                 if (_settings.LogAverage)
-                    logEntry["Average"] = allSensors.Average(s => s.Temperature);
+                    logEntry["Average"] = allSensors.Average(s => s.Value);
                 if (_settings.LogMin)
-                    logEntry["Min"] = allSensors.Min(s => s.Temperature);
+                    logEntry["Min"] = allSensors.Min(s => s.Value);
                 if (_settings.LogMax)
-                    logEntry["Max"] = allSensors.Max(s => s.Temperature);
+                    logEntry["Max"] = allSensors.Max(s => s.Value);
 
                 WriteLog(logEntry);
             }
@@ -97,13 +99,31 @@ namespace HotCPU
                 }
                 else if (format == "CSV")
                 {
-                    // Check if file exists to write header
-                    bool fileExists = File.Exists(_settings.LogPath);
+                    var keys = entry.Keys.ToList();
+                    string currentHeader = string.Join(",", keys);
                     
+                    bool fileExists = File.Exists(_settings.LogPath);
+                    if (fileExists)
+                    {
+                        // Industrial Fix: Check Schema Integrity
+                        string? existingHeader = File.ReadLines(_settings.LogPath).FirstOrDefault();
+                        if (existingHeader != currentHeader)
+                        {
+                            // Schema mismatch! Rotate log
+                            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                            string backupPath = $"{_settings.LogPath}.{timestamp}.bak";
+                            try 
+                            { 
+                                File.Move(_settings.LogPath, backupPath);
+                                fileExists = false; 
+                            } 
+                            catch { /* If move fails, we might append garbage, but we tried */ }
+                        }
+                    }
+
                     if (!fileExists)
                     {
-                        var keys = entry.Keys.ToList();
-                        File.AppendAllText(_settings.LogPath, string.Join(",", keys) + Environment.NewLine);
+                        File.AppendAllText(_settings.LogPath, currentHeader + Environment.NewLine);
                     }
 
                      foreach (var value in entry.Values)
@@ -111,7 +131,6 @@ namespace HotCPU
                          var s = value is float f ? f.ToString("F1") : value.ToString();
                          if (s != null && (s.Contains(",") || s.Contains("\"")))
                          {
-                             // Simple escape: double quotes around, double up internal quotes
                              s = $"\"{s.Replace("\"", "\"\"")}\"";
                          }
                          sb.Append(s).Append(',');
@@ -128,7 +147,7 @@ namespace HotCPU
                     {
                         if (kvp.Key == "Timestamp") continue;
                         if (kvp.Value is float f)
-                            sb.Append(kvp.Key).Append(": ").Append(f.ToString("F1")).Append("°C, ");
+                            sb.Append(kvp.Key).Append(": ").Append(f.ToString("F1")).Append(", ");
                         else
                             sb.Append(kvp.Key).Append(": ").Append(kvp.Value).Append(", ");
                     }

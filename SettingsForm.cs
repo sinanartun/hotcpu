@@ -32,6 +32,10 @@ namespace HotCPU
         private CheckedListBox _sensorsCheckList = null!;
         private CheckedListBox _traySensorsCheckList = null!;
         private readonly List<HardwareTemps> _availableHardware;
+        
+        // Category tab controls (sensor visibility)
+        private TabControl? _sensorCategoryTabs;
+        private Dictionary<string, CheckedListBox> _categoryLists = new();
 
         // Logging Controls
         private Button _btnBrowseLog = null!;
@@ -52,6 +56,11 @@ namespace HotCPU
         private CheckBox _startWithWindowsCheck = null!;
         private CheckBox _showTrayTempCheck = null!;
         private ComboBox _fontSizeCombo = null!;
+        private Button _fontSizeMinusButton = null!;
+        private Button _fontSizePlusButton = null!;
+        private ComboBox _themeCombo = null!;
+        private Button _lightTextColorBtn = null!;
+        private Button _darkTextColorBtn = null!;
         private CheckBox _useGradientCheck = null!;
         private Button _coolColorBtn = null!;
         private Button _warmColorBtn = null!;
@@ -64,6 +73,8 @@ namespace HotCPU
         private List<LanguageOption> _languageOptions = new();
         private int _initialLanguageIndex = -1;
         private bool _languageWarningShown = false;
+        private bool _isLoadingSettings = false;
+        private static readonly int[] FontSizes = { 10, 12, 13, 14, 15, 16 };
 
         // Live Updates
         private readonly TemperatureService? _tempService;
@@ -101,25 +112,32 @@ namespace HotCPU
             var reading = _tempService.CurrentReading;
             if (reading == null) return;
 
-            var allSensors = reading.AllTemps.SelectMany(t => t.Sensors).ToDictionary(s => s.Identifier);
+            var allSensors = reading.AllTemps.SelectMany(t => t.Sensors).DistinctBy(s => s.Identifier).ToDictionary(s => s.Identifier);
 
-            // Update Sensors List
-            for (int i = 0; i < _sensorsCheckList.Items.Count; i++)
+            // Update all category lists
+            foreach (var list in _categoryLists.Values)
             {
-                if (_sensorsCheckList.Items[i] is SensorItem item && allSensors.TryGetValue(item.Id, out var sensor))
+                for (int i = 0; i < list.Items.Count; i++)
                 {
-                    item.Temperature = sensor.Temperature;
+                    if (list.Items[i] is SensorItem item && allSensors.TryGetValue(item.Id, out var sensor))
+                    {
+                        // Debug: Log extreme temperature values during refresh
+                        if (item.Unit == "°C" && (sensor.Value > 500 || sensor.Value < -50))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[HotCPU REFRESH] EXTREME TEMP in CurrentReading: {item.Name} = {sensor.Value}°C (ID: {item.Id})");
+                        }
+                        item.Value = sensor.Value;
+                    }
                 }
+                list.Invalidate();
             }
-            // Force refresh of text
-            _sensorsCheckList.Invalidate();
 
             // Update Logging List
             for (int i = 0; i < _logSensorsCheckList.Items.Count; i++)
             {
                 if (_logSensorsCheckList.Items[i] is SensorItem item && allSensors.TryGetValue(item.Id, out var sensor))
                 {
-                    item.Temperature = sensor.Temperature;
+                    item.Value = sensor.Value;
                 }
             }
             _logSensorsCheckList.Invalidate();
@@ -299,19 +317,57 @@ namespace HotCPU
 
             AddLabel(page, S("SettingsForm_General_FontSize"), x, y);
             _fontSizeCombo = CreateComboBox(page, 170, y - 3, 160);
-            _fontSizeCombo.Items.AddRange(new object[]
+            _fontSizeCombo.Items.AddRange(FontSizes.Select(s => s.ToString()).Cast<object>().ToArray());
+            _fontSizeCombo.SelectedIndexChanged += (s, e) => ApplyFontSizeImmediate();
+
+            int fontButtonsX = 170 + 160 + 6;
+            int fontButtonsY = y - 3;
+            int fontButtonSize = 24;
+
+            _fontSizeMinusButton = new Button
             {
-                S("SettingsForm_General_FontSmall"),
-                S("SettingsForm_General_FontMedium"),
-                S("SettingsForm_General_FontLarge")
-            });
+                Text = "-",
+                Size = new Size(fontButtonSize, fontButtonSize),
+                Location = new Point(fontButtonsX, fontButtonsY),
+                UseVisualStyleBackColor = true
+            };
+            _fontSizeMinusButton.Click += (s, e) => StepFontSize(-1);
+            page.Controls.Add(_fontSizeMinusButton);
+
+            _fontSizePlusButton = new Button
+            {
+                Text = "+",
+                Size = new Size(fontButtonSize, fontButtonSize),
+                Location = new Point(fontButtonsX + fontButtonSize + 4, fontButtonsY),
+                UseVisualStyleBackColor = true
+            };
+            _fontSizePlusButton.Click += (s, e) => StepFontSize(1);
+            page.Controls.Add(_fontSizePlusButton);
             y += 40;
+
+            AddLabel(page, S("SettingsForm_General_Theme"), x, y);
+            _themeCombo = CreateComboBox(page, 170, y - 3, 200);
+            _themeCombo.Items.AddRange(new object[]
+            {
+                S("SettingsForm_General_Theme_Auto"),
+                S("SettingsForm_General_Theme_Light"),
+                S("SettingsForm_General_Theme_Dark")
+            });
+            y += 30;
+
+            AddLabel(page, S("SettingsForm_General_TextColorLight"), x, y);
+            _lightTextColorBtn = CreateColorButton(page, 170, y - 3, Color.Black);
+            y += 30;
+
+            AddLabel(page, S("SettingsForm_General_TextColorDark"), x, y);
+            _darkTextColorBtn = CreateColorButton(page, 170, y - 3, Color.White);
+            y += 30;
 
             AddLabel(page, S("SettingsForm_General_Language"), x, y);
             _languageCombo = CreateComboBox(page, 170, y - 3, 200);
             PopulateLanguageCombo();
             _languageCombo.SelectedIndexChanged += OnLanguageChanged;
-            y += 40;
+            y += 30;
 
             _languageInfoLabel = new Label
             {
@@ -321,7 +377,7 @@ namespace HotCPU
                 ForeColor = Color.DimGray
             };
             page.Controls.Add(_languageInfoLabel);
-            y += 30;
+            y += 20;
 
             _startWithWindowsCheck = new CheckBox
             {
@@ -331,7 +387,7 @@ namespace HotCPU
                 UseVisualStyleBackColor = true
             };
             page.Controls.Add(_startWithWindowsCheck);
-            y += 30;
+            y += 25;
 
             _showTrayTempCheck = new CheckBox
             {
@@ -341,7 +397,7 @@ namespace HotCPU
                 UseVisualStyleBackColor = true
             };
             page.Controls.Add(_showTrayTempCheck);
-            y += 30;
+            y += 25;
         }
 
         private void BuildColorsPanel(Panel page)
@@ -396,20 +452,48 @@ namespace HotCPU
             };
             page.Controls.Add(chkSelectAll);
 
-            _sensorsCheckList = new CheckedListBox
+            // Create TabControl for hardware categories
+            _sensorCategoryTabs = new TabControl
             {
                 Location = new Point(10, 35),
-                Size = new Size(540, 370),
-                CheckOnClick = true
+                Size = new Size(540, 370)
             };
-            page.Controls.Add(_sensorsCheckList);
+            page.Controls.Add(_sensorCategoryTabs);
+
+            // Create tabs for each hardware category
+            string[] categories = { "CPU", "GPU", "Storage", "Fans", "RAM", "Network", "Other" };
+            
+            foreach (var category in categories)
+            {
+                var tab = new TabPage(category);
+                var list = new CheckedListBox
+                {
+                    CheckOnClick = true,
+                    Dock = DockStyle.Fill
+                };
+                tab.Controls.Add(list);
+                _sensorCategoryTabs.TabPages.Add(tab);
+                _categoryLists[category] = list;
+            }
+
+            // Keep reference to first list for compatibility
+            _sensorsCheckList = _categoryLists["CPU"];
 
             chkSelectAll.CheckedChanged += (s, e) =>
             {
-                for (int i = 0; i < _sensorsCheckList.Items.Count; i++)
-                    _sensorsCheckList.SetItemChecked(i, chkSelectAll.Checked);
+                // Select all in currently visible tab
+                if (_sensorCategoryTabs.SelectedTab != null)
+                {
+                    var categoryName = _sensorCategoryTabs.SelectedTab.Text;
+                    if (_categoryLists.TryGetValue(categoryName, out var currentList))
+                    {
+                        for (int i = 0; i < currentList.Items.Count; i++)
+                            currentList.SetItemChecked(i, chkSelectAll.Checked);
+                    }
+                }
             };
         }
+
 
         private void BuildTrayPanel(Panel page)
         {
@@ -630,10 +714,19 @@ namespace HotCPU
             _settings.WarmThreshold = (int)_warmThresholdNum.Value;
             _settings.HotThreshold = (int)_hotThresholdNum.Value;
             _settings.CriticalThreshold = (int)_criticalThresholdNum.Value;
-            _settings.FontSize = _fontSizeCombo.SelectedIndex switch
+            if (_fontSizeCombo.SelectedIndex >= 0 && _fontSizeCombo.SelectedIndex < FontSizes.Length)
+                _settings.FontSize = FontSizes[_fontSizeCombo.SelectedIndex];
+            else
+                _settings.FontSize = 14;
+
+            _settings.ThemeMode = _themeCombo.SelectedIndex switch
             {
-                0 => 10, 1 => 12, 2 => 14, _ => 14
+                1 => "Light",
+                2 => "Dark",
+                _ => "Auto"
             };
+            _settings.SetLightTextColor(_lightTextColorBtn.BackColor);
+            _settings.SetDarkTextColor(_darkTextColorBtn.BackColor);
             if (_languageCombo.SelectedItem is LanguageOption selectedLanguage)
             {
                 _settings.Language = selectedLanguage.CultureCode;
@@ -698,6 +791,7 @@ namespace HotCPU
 
         private void LoadSettings()
         {
+            _isLoadingSettings = true;
             _refreshIntervalCombo.SelectedIndex = _settings.RefreshIntervalMs switch
             {
                 500 => 0, 1000 => 1, 2000 => 2, 5000 => 3, _ => 1
@@ -707,10 +801,17 @@ namespace HotCPU
             _hotThresholdNum.Value = _settings.HotThreshold;
             _criticalThresholdNum.Value = _settings.CriticalThreshold;
 
-            _fontSizeCombo.SelectedIndex = _settings.FontSize switch
+            var fontIndex = Array.IndexOf(FontSizes, _settings.FontSize);
+            _fontSizeCombo.SelectedIndex = fontIndex >= 0 ? fontIndex : Array.IndexOf(FontSizes, 14);
+
+            _themeCombo.SelectedIndex = _settings.ThemeMode?.ToLowerInvariant() switch
             {
-                10 => 0, 12 => 1, 14 => 2, _ => 2
+                "light" => 1,
+                "dark" => 2,
+                _ => 0
             };
+            _lightTextColorBtn.BackColor = _settings.GetLightTextColorValue();
+            _darkTextColorBtn.BackColor = _settings.GetDarkTextColorValue();
 
             // Ensure combo is populated
             if (_languageCombo.Items.Count == 0)
@@ -747,15 +848,26 @@ namespace HotCPU
             _criticalColorBtn.BackColor = _settings.GetCriticalColorValue();
             UpdateColorButtonsEnabled();
 
-            // Sensors
-            _sensorsCheckList.Items.Clear();
+            // Sensors - populate by category
+            foreach (var list in _categoryLists.Values)
+                list.Items.Clear();
+                
             foreach (var hw in _availableHardware)
             {
-                foreach (var sensor in hw.Sensors)
+                // Determine which category this hardware belongs to
+                string category = GetHardwareCategory(hw.Type);
+                
+                // Debug: Log hardware types
+                System.Diagnostics.Debug.WriteLine($"[HotCPU SETTINGS] Hardware: {hw.Name}, Type: {hw.Type}, Category: {category}, Sensors: {hw.Sensors.Count}");
+                
+                if (_categoryLists.TryGetValue(category, out var targetList))
                 {
-                    bool isVisible = !_settings.HiddenSensorIds.Contains(sensor.Identifier);
-                    string displayName = $"{hw.Name} - {sensor.Name}";
-                    _sensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isVisible);
+                    foreach (var sensor in hw.Sensors)
+                    {
+                        bool isVisible = !_settings.HiddenSensorIds.Contains(sensor.Identifier);
+                        string displayName = $"{hw.Name} - {sensor.Name}";
+                        targetList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Value, sensor.Unit), isVisible);
+                    }
                 }
             }
 
@@ -767,7 +879,7 @@ namespace HotCPU
                 {
                     bool isSelected = _settings.TraySensorIds.Contains(sensor.Identifier);
                     string displayName = $"{hw.Name} - {sensor.Name}";
-                    _traySensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isSelected);
+                    _traySensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Value, sensor.Unit), isSelected);
                 }
             }
 
@@ -788,23 +900,81 @@ namespace HotCPU
                 {
                     bool isLogged = _settings.LogSensorIds.Contains(sensor.Identifier);
                     string displayName = $"{hw.Name} - {sensor.Name}";
-                    _logSensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Temperature), isLogged);
+                    _logSensorsCheckList.Items.Add(new SensorItem(displayName, sensor.Identifier, sensor.Value, sensor.Unit), isLogged);
                 }
             }
+            _isLoadingSettings = false;
+        }
+
+        private void StepFontSize(int delta)
+        {
+            if (_fontSizeCombo.Items.Count == 0) return;
+            int idx = _fontSizeCombo.SelectedIndex;
+            if (idx < 0)
+                idx = Array.IndexOf(FontSizes, 14);
+            if (idx < 0)
+                idx = 0;
+            idx = Math.Clamp(idx + delta, 0, FontSizes.Length - 1);
+            _fontSizeCombo.SelectedIndex = idx;
+            ApplyFontSizeImmediate();
+        }
+
+        private void ApplyFontSizeImmediate()
+        {
+            if (_isLoadingSettings) return;
+            if (_fontSizeCombo.SelectedIndex < 0 || _fontSizeCombo.SelectedIndex >= FontSizes.Length)
+                return;
+
+            _settings.FontSize = FontSizes[_fontSizeCombo.SelectedIndex];
+            _onSettingsChanged();
+            _settings.Save();
         }
         
         private static string S(string key) => LocalizationService.GetString(key);
+        
+        private string GetHardwareCategory(string hardwareType)
+        {
+            return hardwareType switch
+            {
+                "Cpu" => "CPU",
+                "GpuNvidia" or "GpuAmd" or "GpuIntel" => "GPU",
+                "Motherboard" or "SuperIO" or "WMI_ACPI" or "WMI_CIM" or "ThermalZone" => "Motherboard",
+                "Storage" or "WMI_Storage" => "Storage",
+                "Memory" => "RAM",
+                "Network" => "Network",
+                _ => "Other" // Fan, PSU, Battery, Controller, etc.
+            };
+        }
 
         private class SensorItem
         {
             public string Name { get; }
             public string Id { get; }
-            public float Temperature { get; set; }
-            public SensorItem(string name, string id, float temp) { Name = name; Id = id; Temperature = temp; }
+            public float Value { get; set; }
+            public string Unit { get; }
+            
+            public SensorItem(string name, string id, float value, string unit) 
+            { 
+                Name = name; 
+                Id = id; 
+                Value = value; 
+                Unit = unit;
+                
+                // Debug: Log extreme temperature values
+                if (unit == "°C" && (value > 500 || value < -50))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[HotCPU SETTINGS] EXTREME TEMP in SensorItem: {name} = {value}°C (ID: {id})");
+                }
+            }
+            
             public override string ToString()
             {
-                var roundedTemp = (int)Math.Round(Temperature);
-                return LocalizationService.Format("SensorItem_Format", Name, roundedTemp);
+                var rounded = (int)Math.Round(Value);
+                // If unit is small/integer based, round it. If float based like Volts, keep decimals
+                string valStr = Unit == "°C" || Unit == "RPM" || Unit == "%" ? rounded.ToString() : Value.ToString("F1");
+                
+                // Fallback format if resource missing or minimal
+                return $"{Name} ({valStr}{Unit})";
             }
         }
 
@@ -837,13 +1007,19 @@ namespace HotCPU
             _settings.HotThreshold = (int)_hotThresholdNum.Value;
             _settings.CriticalThreshold = (int)_criticalThresholdNum.Value;
 
-            _settings.FontSize = _fontSizeCombo.SelectedIndex switch
+            if (_fontSizeCombo.SelectedIndex >= 0 && _fontSizeCombo.SelectedIndex < FontSizes.Length)
+                _settings.FontSize = FontSizes[_fontSizeCombo.SelectedIndex];
+            else
+                _settings.FontSize = 14;
+
+            _settings.ThemeMode = _themeCombo.SelectedIndex switch
             {
-                0 => 10,
-                1 => 12,
-                2 => 14,
-                _ => 14
+                1 => "Light",
+                2 => "Dark",
+                _ => "Auto"
             };
+            _settings.SetLightTextColor(_lightTextColorBtn.BackColor);
+            _settings.SetDarkTextColor(_darkTextColorBtn.BackColor);
 
             if (_languageCombo.SelectedItem is LanguageOption selectedLanguage)
             {
@@ -859,16 +1035,19 @@ namespace HotCPU
             _settings.SetHotColor(_hotColorBtn.BackColor);
             _settings.SetCriticalColor(_criticalColorBtn.BackColor);
 
-            // Update hidden sensors
+            // Update hidden sensors - collect from all category lists
             _settings.HiddenSensorIds.Clear();
-            for (int i = 0; i < _sensorsCheckList.Items.Count; i++)
+            foreach (var list in _categoryLists.Values)
             {
-                // If UNCHECKED, it means hidden
-                if (!_sensorsCheckList.GetItemChecked(i))
+                for (int i = 0; i < list.Items.Count; i++)
                 {
-                    if (_sensorsCheckList.Items[i] is SensorItem item)
+                    // If UNCHECKED, it means hidden
+                    if (!list.GetItemChecked(i))
                     {
-                        _settings.HiddenSensorIds.Add(item.Id);
+                        if (list.Items[i] is SensorItem item)
+                        {
+                            _settings.HiddenSensorIds.Add(item.Id);
+                        }
                     }
                 }
             }

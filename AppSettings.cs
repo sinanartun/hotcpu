@@ -23,6 +23,9 @@ namespace HotCPU
         public bool StartWithWindows { get; set; } = false;
         public int FontSize { get; set; } = 14;
         public bool ShowTrayIconTemperature { get; set; } = true;
+        public string ThemeMode { get; set; } = "Auto"; // Auto, Light, Dark
+        public int LightTextColor { get; set; } = unchecked((int)0xFF000000); // Black
+        public int DarkTextColor { get; set; } = unchecked((int)0xFFFFFFFF); // White
         public List<string> HiddenSensorIds { get; set; } = new();
         public List<string> TraySensorIds { get; set; } = new();
         public string? Language { get; set; }
@@ -48,11 +51,15 @@ namespace HotCPU
         public System.Drawing.Color GetWarmColorValue() => System.Drawing.Color.FromArgb(WarmColor);
         public System.Drawing.Color GetHotColorValue() => System.Drawing.Color.FromArgb(HotColor);
         public System.Drawing.Color GetCriticalColorValue() => System.Drawing.Color.FromArgb(CriticalColor);
+        public System.Drawing.Color GetLightTextColorValue() => System.Drawing.Color.FromArgb(LightTextColor);
+        public System.Drawing.Color GetDarkTextColorValue() => System.Drawing.Color.FromArgb(DarkTextColor);
         
         public void SetCoolColor(System.Drawing.Color c) => CoolColor = c.ToArgb();
         public void SetWarmColor(System.Drawing.Color c) => WarmColor = c.ToArgb();
         public void SetHotColor(System.Drawing.Color c) => HotColor = c.ToArgb();
         public void SetCriticalColor(System.Drawing.Color c) => CriticalColor = c.ToArgb();
+        public void SetLightTextColor(System.Drawing.Color c) => LightTextColor = c.ToArgb();
+        public void SetDarkTextColor(System.Drawing.Color c) => DarkTextColor = c.ToArgb();
 
         public static AppSettings Load()
         {

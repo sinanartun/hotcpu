@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 // These are available because of net8.0-windows10.0.19041.0
@@ -12,22 +13,41 @@ namespace HotCPU
     {
         // Must match the ID in Package.appxmanifest <StartupTask Id="...">
         private const string StartupTaskId = "HotCPUStartup";
+        
+        // Cache the result since it never changes during runtime
+        private static bool? _isPackage;
 
         public static bool IsPackage
         {
             get
             {
-                try
-                {
-                    var p = Package.Current;
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
+                if (_isPackage.HasValue)
+                    return _isPackage.Value;
+                
+                _isPackage = CheckIsPackage();
+                return _isPackage.Value;
             }
         }
+        
+        private static bool CheckIsPackage()
+        {
+            try
+            {
+                // Use GetCurrentPackageFullName to check - returns ERROR_NO_PACKAGE (15700) if not packaged
+                int length = 0;
+                int result = GetCurrentPackageFullName(ref length, null);
+                
+                // APPMODEL_ERROR_NO_PACKAGE = 15700 means not running as packaged app
+                return result != 15700;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, System.Text.StringBuilder? packageFullName);
 
         public static async Task<bool> IsStartupEnabledAsync()
         {

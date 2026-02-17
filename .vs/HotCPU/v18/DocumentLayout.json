@@ -3,7 +3,12 @@
   "WorkspaceRootPath": "C:\\projects\\hotcpu\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\projects\\hotcpuPublish\\hotcpuPublish.wapproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\trayiconmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:trayiconmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|c:\\projects\\hotcpu\\settingsform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{728ACA8C-1056-4EEA-9283-922D4CE0A51E}|HotCPU.csproj|solutionrelative:settingsform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -16,19 +21,30 @@
           "SelectedChildIndex": 1,
           "Children": [
             {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SettingsForm.cs",
+              "DocumentMoniker": "C:\\projects\\hotcpu\\SettingsForm.cs",
+              "RelativeDocumentMoniker": "SettingsForm.cs",
+              "ToolTip": "C:\\projects\\hotcpu\\SettingsForm.cs",
+              "RelativeToolTip": "SettingsForm.cs",
+              "ViewState": "AgIAABEBAAAAAAAAAAAAwCIBAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T12:45:10.855Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "hotcpuPublish.wapproj",
-              "DocumentMoniker": "C:\\projects\\hotcpuPublish\\hotcpuPublish.wapproj",
-              "RelativeDocumentMoniker": "..\\hotcpuPublish\\hotcpuPublish.wapproj",
-              "ToolTip": "C:\\projects\\hotcpuPublish\\hotcpuPublish.wapproj",
-              "RelativeToolTip": "..\\hotcpuPublish\\hotcpuPublish.wapproj",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-12-16T09:41:34.736Z"
+              "Title": "TrayIconManager.cs",
+              "DocumentMoniker": "C:\\projects\\hotcpu\\TrayIconManager.cs",
+              "RelativeDocumentMoniker": "TrayIconManager.cs",
+              "ToolTip": "C:\\projects\\hotcpu\\TrayIconManager.cs",
+              "RelativeToolTip": "TrayIconManager.cs",
+              "ViewState": "AgIAALQAAAAAAAAAAAAkwNsAAAA2AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-03T12:40:46.406Z",
+              "EditorCaption": ""
             }
           ]
         }

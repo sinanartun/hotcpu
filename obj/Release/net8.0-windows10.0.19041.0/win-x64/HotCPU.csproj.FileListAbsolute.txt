@@ -104,3 +104,7 @@ C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\Recordi
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_1080x1080.png
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_300x300.png
 C:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\Images\store_71x71.png
+c:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\BlackSharp.Core.dll
+c:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\DiskInfoToolkit.dll
+c:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\RAMSPDToolkit-NDD.dll
+c:\projects\hotcpu\bin\Release\net8.0-windows10.0.19041.0\win-x64\System.Threading.AccessControl.dll

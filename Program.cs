@@ -11,8 +11,15 @@ namespace HotCPU
         private static Mutex? _mutex;
 
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            // Check for sensor report argument
+            if (args != null && args.Length > 0 && args.Contains("--report-sensors"))
+            {
+                GenerateSensorReport();
+                return;
+            }
+
             const string mutexName = "HotCPU_SingleInstance_Mutex";
             _mutex = new Mutex(true, mutexName, out bool createdNew);
 
@@ -29,6 +36,11 @@ namespace HotCPU
             AppSettings settings = AppSettings.Load();
             ApplyCulture(settings);
 
+            // Global Exception Handling
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) => HandleException(e.Exception, "UI Thread");
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => HandleException(e.ExceptionObject as Exception, "AppDomain");
+
             try
             {
                 ApplicationConfiguration.Initialize();
@@ -39,6 +51,36 @@ namespace HotCPU
             {
                 _mutex?.ReleaseMutex();
                 _mutex?.Dispose();
+            }
+        }
+
+        private static void GenerateSensorReport()
+        {
+            try 
+            {
+                var settings = AppSettings.Load();
+                using var tempService = new TemperatureService(settings);
+                // Force open momentarily to detect hardware
+                var computerField = typeof(TemperatureService)
+                    .GetField("_computer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                
+                if (computerField != null)
+                {
+                    var computer = (LibreHardwareMonitor.Hardware.Computer)computerField.GetValue(tempService)!;
+                    computer.Open();
+                }
+
+                string report = tempService.GetFullHardwareReport();
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sensor_report.txt");
+                File.WriteAllText(path, report);
+                
+                // Show a dialog confirming generation
+                // MessageBox.Show($"Report generated at:\n{path}", "HotCPU Sensor Report", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                // MessageBox.Show($"Failed to generate report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sensor_error.txt"), ex.ToString());
             }
         }
 
@@ -61,6 +103,21 @@ namespace HotCPU
             catch (CultureNotFoundException)
             {
                 LocalizationService.SetCulture(fallback);
+            }
+        }
+
+        private static void HandleException(Exception? ex, string source)
+        {
+            if (ex == null) return;
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fatal_error.log");
+                string message = $"[{DateTime.Now}] [{source}] Critical Error: {ex}\n\n";
+                File.AppendAllText(path, message);
+            }
+            catch 
+            {
+                // Last resort: failsafe
             }
         }
     }

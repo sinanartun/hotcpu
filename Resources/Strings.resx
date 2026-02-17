@@ -66,6 +66,24 @@
   <data name="SettingsForm_General_FontSize" xml:space="preserve">
     <value>Font Size:</value>
   </data>
+  <data name="SettingsForm_General_Theme" xml:space="preserve">
+    <value>Theme:</value>
+  </data>
+  <data name="SettingsForm_General_Theme_Auto" xml:space="preserve">
+    <value>Match Windows theme</value>
+  </data>
+  <data name="SettingsForm_General_Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="SettingsForm_General_Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="SettingsForm_General_TextColorLight" xml:space="preserve">
+    <value>Text color (Light):</value>
+  </data>
+  <data name="SettingsForm_General_TextColorDark" xml:space="preserve">
+    <value>Text color (Dark):</value>
+  </data>
   <data name="SettingsForm_General_FontSmall" xml:space="preserve">
     <value>Small (10px)</value>
   </data>
@@ -157,3 +175,7 @@
     <value>{0} ({1}&#xb0;C)</value>
   </data>
 </root>
+
+
+
+

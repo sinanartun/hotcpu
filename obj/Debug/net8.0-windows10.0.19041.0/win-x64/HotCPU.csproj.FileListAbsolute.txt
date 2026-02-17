@@ -104,3 +104,7 @@ C:\projects\hotcpu\obj\Debug\net8.0-windows10.0.19041.0\win-x64\pt-BR\HotCPU.res
 C:\projects\hotcpu\obj\Debug\net8.0-windows10.0.19041.0\win-x64\ru-RU\HotCPU.resources.cs
 C:\projects\hotcpu\obj\Debug\net8.0-windows10.0.19041.0\win-x64\tr-TR\HotCPU.resources.cs
 C:\projects\hotcpu\obj\Debug\net8.0-windows10.0.19041.0\win-x64\zh-CN\HotCPU.resources.cs
+c:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\win-x64\BlackSharp.Core.dll
+c:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\win-x64\DiskInfoToolkit.dll
+c:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\win-x64\RAMSPDToolkit-NDD.dll
+c:\projects\hotcpu\bin\Debug\net8.0-windows10.0.19041.0\win-x64\System.Threading.AccessControl.dll
