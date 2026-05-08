@@ -3292,7 +3292,7 @@
           "build/net6.0/xunit.runner.visualstudio.props": {}
         }
       },
-      "HotCPU/1.0.8": {
+      "HotCPU/1.0.9": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
@@ -8435,7 +8435,7 @@
         "xunit.runner.visualstudio.nuspec"
       ]
     },
-    "HotCPU/1.0.8": {
+    "HotCPU/1.0.9": {
       "type": "project",
       "path": "../HotCPU.csproj",
       "msbuildProject": "../HotCPU.csproj"
@@ -8443,7 +8443,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0-windows10.0.19041": [
-      "HotCPU >= 1.0.8",
+      "HotCPU >= 1.0.9",
       "Microsoft.NET.Test.Sdk >= 17.8.0",
       "coverlet.collector >= 6.0.0",
       "xunit >= 2.5.3",

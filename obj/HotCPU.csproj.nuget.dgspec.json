@@ -5,7 +5,7 @@
   },
   "projects": {
     "D:\\projects\\hotcpu\\HotCPU.csproj": {
-      "version": "1.0.8",
+      "version": "1.0.9",
       "restore": {
         "projectUniqueName": "D:\\projects\\hotcpu\\HotCPU.csproj",
         "projectName": "HotCPU",
@@ -29,7 +29,8 @@
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net8.0-windows10.0.19041": {
+          "net8.0-windows10.0.19041.0": {
+            "framework": "net8.0-windows10.0.19041",
             "targetAlias": "net8.0-windows10.0.19041.0",
             "projectReferences": {}
           }
@@ -50,7 +51,8 @@
         "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
-        "net8.0-windows10.0.19041": {
+        "net8.0-windows10.0.19041.0": {
+          "framework": "net8.0-windows10.0.19041",
           "targetAlias": "net8.0-windows10.0.19041.0",
           "dependencies": {
             "LibreHardwareMonitorLib": {

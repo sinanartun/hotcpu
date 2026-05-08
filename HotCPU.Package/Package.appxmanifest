@@ -9,7 +9,7 @@
   <Identity
     Name="47566synan.hotcpu"
     Publisher="CN=23A51628-79CC-43CA-89E6-46CBEB43305F"
-    Version="1.0.8.0" />
+    Version="1.0.9.0" />
 
   <Properties>
     <DisplayName>hotcpu</DisplayName>
