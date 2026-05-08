@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Psce6NZ51vA=",
+  "dgSpecHash": "jJyee6UMjD0=",
   "success": true,
   "projectFilePath": "D:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
   "expectedPackageFiles": [
@@ -131,7 +131,7 @@
     "C:\\Users\\sinan\\.nuget\\packages\\xunit.extensibility.core\\2.5.3\\xunit.extensibility.core.2.5.3.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\xunit.extensibility.execution\\2.5.3\\xunit.extensibility.execution.2.5.3.nupkg.sha512",
     "C:\\Users\\sinan\\.nuget\\packages\\xunit.runner.visualstudio\\2.5.3\\xunit.runner.visualstudio.2.5.3.nupkg.sha512",
-    "C:\\Users\\sinan\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.19041.57\\microsoft.windows.sdk.net.ref.10.0.19041.57.nupkg.sha512"
+    "C:\\Users\\sinan\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.19041.56\\microsoft.windows.sdk.net.ref.10.0.19041.56.nupkg.sha512"
   ],
   "logs": []
 }
