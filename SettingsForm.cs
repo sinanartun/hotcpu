@@ -160,6 +160,26 @@ namespace HotCPU
             catch { }
         }
 
+        private void HandleStartupResult(StartupChangeResult result, bool requestedEnable)
+        {
+            // Only bother the user when they asked to turn auto-start ON and it didn't take.
+            if (!requestedEnable || result == StartupChangeResult.Success) return;
+
+            string message = result switch
+            {
+                StartupChangeResult.DisabledByUser =>
+                    "Windows is blocking HotCPU from starting automatically.\n\n" +
+                    "Open Task Manager \u2192 Startup apps and enable HotCPU, or enable it in Settings \u2192 Apps \u2192 Startup.",
+                StartupChangeResult.DisabledByPolicy =>
+                    "Your organization's policy prevents apps from starting with Windows.\n\n" +
+                    "Contact your IT administrator to enable this.",
+                _ =>
+                    "Could not enable 'Start with Windows'. Please try again or set it manually from Windows Settings \u2192 Apps \u2192 Startup."
+            };
+
+            MessageBox.Show(this, message, "Start with Windows", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
         private void InitializeComponent()
         {
             Text = S("SettingsForm_Title");
@@ -1547,8 +1567,14 @@ namespace HotCPU
                 }
             }
 
-            // Update System Startup logic
-            await StartupManager.SetStartupEnabledAsync(_startWithWindowsCheck.Checked);
+            // Update System Startup logic and surface the real outcome. Silent failure here
+            // used to leave the checkbox on while Windows ignored the request.
+            var startupResult = await StartupManager.TrySetStartupEnabledAsync(_startWithWindowsCheck.Checked);
+            HandleStartupResult(startupResult, _startWithWindowsCheck.Checked);
+
+            // Re-read actual state so the persisted flag reflects reality, not intent.
+            _settings.StartWithWindows = await StartupManager.IsStartupEnabledAsync();
+            _startWithWindowsCheck.Checked = _settings.StartWithWindows;
 
             // Save Tray Sensors
             _settings.TraySensorIds.Clear();

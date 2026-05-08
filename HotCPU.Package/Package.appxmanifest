@@ -3,8 +3,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap5 desktop rescap">
 
   <Identity
     Name="47566synan.hotcpu"
@@ -39,6 +41,16 @@
         <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png"  Square71x71Logo="Images\SmallTile.png" Square310x310Logo="Images\LargeTile.png"/>
         <uap:SplashScreen Image="Images\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <!--
+          Register the startup task so Windows.ApplicationModel.StartupTask.GetAsync("HotCPUStartup")
+          can find it. TaskId here MUST match StartupManager.StartupTaskId.
+          Enabled="false" means the user must opt in via Settings; we call RequestEnableAsync at runtime.
+        -->
+        <desktop:Extension Category="windows.startupTask" Executable="HotCPU\HotCPU.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="HotCPUStartup" Enabled="false" DisplayName="HotCPU" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

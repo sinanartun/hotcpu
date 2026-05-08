@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Win32;
@@ -9,11 +8,28 @@ using Windows.ApplicationModel;
 
 namespace HotCPU
 {
+    /// <summary>
+    /// Result of attempting to change the "Start with Windows" setting. Lets the UI explain
+    /// why a request did not take effect (the StartupTask API can silently refuse to enable
+    /// when the user disabled it in Task Manager or IT policy blocks it).
+    /// </summary>
+    public enum StartupChangeResult
+    {
+        /// <summary>Requested state applied successfully.</summary>
+        Success,
+        /// <summary>User must enable the task manually in Task Manager &gt; Startup apps.</summary>
+        DisabledByUser,
+        /// <summary>Group Policy / MDM blocks enabling auto-start.</summary>
+        DisabledByPolicy,
+        /// <summary>Manifest entry missing, or an unexpected platform error occurred.</summary>
+        Failed
+    }
+
     public static class StartupManager
     {
-        // Must match the ID in Package.appxmanifest <StartupTask Id="...">
-        private const string StartupTaskId = "HotCPUStartup";
-        
+        // Must match the TaskId in <desktop:StartupTask TaskId="..."/> in Package.appxmanifest.
+        internal const string StartupTaskId = "HotCPUStartup";
+
         // Cache the result since it never changes during runtime
         private static bool? _isPackage;
 
@@ -23,29 +39,33 @@ namespace HotCPU
             {
                 if (_isPackage.HasValue)
                     return _isPackage.Value;
-                
+
                 _isPackage = CheckIsPackage();
                 return _isPackage.Value;
             }
         }
-        
+
         private static bool CheckIsPackage()
         {
             try
             {
-                // Use GetCurrentPackageFullName to check - returns ERROR_NO_PACKAGE (15700) if not packaged
+                // APPMODEL_ERROR_NO_PACKAGE (15700) = not running as packaged app.
+                // We pass a zero-length buffer; we only care about the error code.
                 int length = 0;
                 int result = GetCurrentPackageFullName(ref length, null);
-                
-                // APPMODEL_ERROR_NO_PACKAGE = 15700 means not running as packaged app
                 return result != 15700;
+            }
+            catch (DllNotFoundException)
+            {
+                // Pre-Windows 8 or unusual host — treat as unpackaged.
+                return false;
             }
             catch
             {
                 return false;
             }
         }
-        
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, System.Text.StringBuilder? packageFullName);
 
@@ -55,45 +75,108 @@ namespace HotCPU
             {
                 try
                 {
-                    var task = await Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId);
-                    return task.State == Windows.ApplicationModel.StartupTaskState.Enabled;
+                    var task = await StartupTask.GetAsync(StartupTaskId);
+                    return task.State == StartupTaskState.Enabled ||
+                           task.State == StartupTaskState.EnabledByPolicy;
                 }
                 catch
                 {
-                    // If ID calls fail or manifest entry missing
+                    // Manifest missing the StartupTask declaration, or API unavailable.
                     return false;
                 }
             }
-            else
-            {
-                return GetRegistryState();
-            }
+
+            return GetRegistryState();
         }
 
+        /// <summary>
+        /// Legacy boolean API kept for compatibility. Prefer <see cref="TrySetStartupEnabledAsync"/>
+        /// in new code so the caller can react to <see cref="StartupChangeResult"/>.
+        /// </summary>
         public static async Task SetStartupEnabledAsync(bool enable)
+        {
+            await TrySetStartupEnabledAsync(enable).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Apply the requested state and report what actually happened. This is the API
+        /// Settings should call so it can notify the user when Windows refuses to enable
+        /// autostart (task disabled by user, disabled by policy, or manifest missing).
+        /// </summary>
+        public static async Task<StartupChangeResult> TrySetStartupEnabledAsync(bool enable)
         {
             if (IsPackage)
             {
+                StartupTask task;
                 try
                 {
-                    var task = await Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId);
-                    if (enable)
+                    task = await StartupTask.GetAsync(StartupTaskId);
+                }
+                catch
+                {
+                    return StartupChangeResult.Failed;
+                }
+
+                if (!enable)
+                {
+                    try
                     {
-                        if (task.State != Windows.ApplicationModel.StartupTaskState.Enabled)
+                        if (task.State == StartupTaskState.Enabled ||
+                            task.State == StartupTaskState.EnabledByPolicy)
                         {
-                            await task.RequestEnableAsync();
+                            task.Disable();
                         }
+                        return StartupChangeResult.Success;
                     }
-                    else
+                    catch
                     {
-                        task.Disable();
+                        return StartupChangeResult.Failed;
                     }
                 }
-                catch { }
+
+                // enable == true
+                return task.State switch
+                {
+                    StartupTaskState.Enabled => StartupChangeResult.Success,
+                    StartupTaskState.EnabledByPolicy => StartupChangeResult.Success,
+                    StartupTaskState.DisabledByUser => StartupChangeResult.DisabledByUser,
+                    StartupTaskState.DisabledByPolicy => StartupChangeResult.DisabledByPolicy,
+                    StartupTaskState.Disabled => await RequestEnableAsync(task).ConfigureAwait(false),
+                    _ => StartupChangeResult.Failed
+                };
             }
-            else
+
+            // Unpackaged path — Registry Run key.
+            try
             {
                 SetRegistryState(enable);
+                return GetRegistryState() == enable
+                    ? StartupChangeResult.Success
+                    : StartupChangeResult.Failed;
+            }
+            catch
+            {
+                return StartupChangeResult.Failed;
+            }
+        }
+
+        private static async Task<StartupChangeResult> RequestEnableAsync(StartupTask task)
+        {
+            try
+            {
+                var newState = await task.RequestEnableAsync();
+                return newState switch
+                {
+                    StartupTaskState.Enabled => StartupChangeResult.Success,
+                    StartupTaskState.EnabledByPolicy => StartupChangeResult.Success,
+                    StartupTaskState.DisabledByUser => StartupChangeResult.DisabledByUser,
+                    StartupTaskState.DisabledByPolicy => StartupChangeResult.DisabledByPolicy,
+                    _ => StartupChangeResult.Failed
+                };
+            }
+            catch
+            {
+                return StartupChangeResult.Failed;
             }
         }
 
@@ -101,7 +184,7 @@ namespace HotCPU
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
+                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: false);
                 return key?.GetValue("HotCPU") != null;
             }
             catch
@@ -112,28 +195,28 @@ namespace HotCPU
 
         private static void SetRegistryState(bool enable)
         {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-                if (key == null) return;
+            // CreateSubKey ensures the Run key exists even on freshly provisioned profiles
+            // where OpenSubKey would return null.
+            using var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+            if (key == null) return;
 
-                if (enable)
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(exePath))
                 {
-                    var exePath = Environment.ProcessPath;
-                    if (string.IsNullOrEmpty(exePath))
-                    {
-                        // Fallback mainly for weird hosting scenarios, unlikely for WinForms
-                        exePath = Path.Combine(AppContext.BaseDirectory, "HotCPU.exe");
-                    }
-                    
-                    key.SetValue("HotCPU", $"\"{exePath}\"");
+                    // Fallback mainly for weird hosting scenarios, unlikely for WinForms.
+                    exePath = Path.Combine(AppContext.BaseDirectory, "HotCPU.exe");
                 }
-                else
-                {
-                    key.DeleteValue("HotCPU", false);
-                }
+
+                // Always quote so a path containing spaces ("C:\Program Files\...") parses
+                // correctly when Windows executes the Run entry.
+                key.SetValue("HotCPU", $"\"{exePath}\"", RegistryValueKind.String);
             }
-            catch { }
+            else
+            {
+                key.DeleteValue("HotCPU", throwOnMissingValue: false);
+            }
         }
     }
 }

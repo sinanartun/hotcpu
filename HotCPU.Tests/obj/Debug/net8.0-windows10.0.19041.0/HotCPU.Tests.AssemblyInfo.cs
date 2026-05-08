@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HotCPU.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ee774ba280aa1f6ee10b2f7adb21f5f57d9e1a30")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+afd4a972d98f47fcecc66dce7e07070db0bd0152")]
 [assembly: System.Reflection.AssemblyProductAttribute("HotCPU.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HotCPU.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
