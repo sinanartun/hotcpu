@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj": {}
+    "D:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj": {}
   },
   "projects": {
-    "C:\\projects\\hotcpu\\HotCPU.csproj": {
-      "version": "1.0.0",
+    "D:\\projects\\hotcpu\\HotCPU.csproj": {
+      "version": "1.0.8",
       "restore": {
-        "projectUniqueName": "C:\\projects\\hotcpu\\HotCPU.csproj",
+        "projectUniqueName": "D:\\projects\\hotcpu\\HotCPU.csproj",
         "projectName": "HotCPU",
-        "projectPath": "C:\\projects\\hotcpu\\HotCPU.csproj",
+        "projectPath": "D:\\projects\\hotcpu\\HotCPU.csproj",
         "packagesPath": "C:\\Users\\sinan\\.nuget\\packages\\",
-        "outputPath": "C:\\projects\\hotcpu\\obj\\",
+        "outputPath": "D:\\projects\\hotcpu\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -26,7 +26,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -47,7 +46,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net8.0-windows10.0.19041": {
@@ -88,33 +88,33 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
+              "version": "[8.0.26, 8.0.26]"
             },
             {
               "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
+              "version": "[8.0.26, 8.0.26]"
             },
             {
               "name": "Microsoft.Windows.SDK.NET.Ref",
-              "version": "[10.0.19041.56, 10.0.19041.56]"
+              "version": "[10.0.19041.57, 10.0.19041.57]"
             },
             {
               "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
+              "version": "[8.0.26, 8.0.26]"
             }
           ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             },
-            "Microsoft.Windows.SDK.NET.Ref": {
+            "Microsoft.Windows.SDK.NET.Ref.Windows": {
               "privateAssets": "all"
             },
             "Microsoft.WindowsDesktop.App.WindowsForms": {
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {
@@ -123,14 +123,14 @@
         }
       }
     },
-    "C:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj": {
+    "D:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
+        "projectUniqueName": "D:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
         "projectName": "HotCPU.Tests",
-        "projectPath": "C:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
+        "projectPath": "D:\\projects\\hotcpu\\HotCPU.Tests\\HotCPU.Tests.csproj",
         "packagesPath": "C:\\Users\\sinan\\.nuget\\packages\\",
-        "outputPath": "C:\\projects\\hotcpu\\HotCPU.Tests\\obj\\",
+        "outputPath": "D:\\projects\\hotcpu\\HotCPU.Tests\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -145,15 +145,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0-windows10.0.19041": {
             "targetAlias": "net8.0-windows10.0.19041.0",
             "projectReferences": {
-              "C:\\projects\\hotcpu\\HotCPU.csproj": {
-                "projectPath": "C:\\projects\\hotcpu\\HotCPU.csproj"
+              "D:\\projects\\hotcpu\\HotCPU.csproj": {
+                "projectPath": "D:\\projects\\hotcpu\\HotCPU.csproj"
               }
             }
           }
@@ -167,7 +166,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net8.0-windows10.0.19041": {
@@ -204,21 +204,21 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.Windows.SDK.NET.Ref",
-              "version": "[10.0.19041.56, 10.0.19041.56]"
+              "version": "[10.0.19041.57, 10.0.19041.57]"
             }
           ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             },
-            "Microsoft.Windows.SDK.NET.Ref": {
+            "Microsoft.Windows.SDK.NET.Ref.Windows": {
               "privateAssets": "all"
             },
             "Microsoft.WindowsDesktop.App.WindowsForms": {
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

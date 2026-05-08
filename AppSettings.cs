@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -9,10 +10,10 @@ namespace HotCPU
     /// </summary>
     internal class AppSettings
     {
-        private static readonly string SettingsPath = Path.Combine(
+        private static readonly string DefaultSettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "HotCPU", "settings.json");
-        
+
         private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
         // Settings properties
@@ -41,7 +42,7 @@ namespace HotCPU
         public bool LogAverage { get; set; } = false;
         public bool LogMin { get; set; } = false;
         public bool LogMax { get; set; } = false;
-        
+
         // Color settings (stored as ARGB integers for JSON serialization)
         public int CoolColor { get; set; } = unchecked((int)0xFF00FFFF);  // Cyan
         public int WarmColor { get; set; } = unchecked((int)0xFF00FF00);  // Green
@@ -61,7 +62,7 @@ namespace HotCPU
         public System.Drawing.Color GetCriticalColorValue() => System.Drawing.Color.FromArgb(CriticalColor);
         public System.Drawing.Color GetLightTextColorValue() => System.Drawing.Color.FromArgb(LightTextColor);
         public System.Drawing.Color GetDarkTextColorValue() => System.Drawing.Color.FromArgb(DarkTextColor);
-        
+
         public void SetCoolColor(System.Drawing.Color c) => CoolColor = c.ToArgb();
         public void SetWarmColor(System.Drawing.Color c) => WarmColor = c.ToArgb();
         public void SetHotColor(System.Drawing.Color c) => HotColor = c.ToArgb();
@@ -69,31 +70,132 @@ namespace HotCPU
         public void SetLightTextColor(System.Drawing.Color c) => LightTextColor = c.ToArgb();
         public void SetDarkTextColor(System.Drawing.Color c) => DarkTextColor = c.ToArgb();
 
-        public static AppSettings Load()
+        public static AppSettings Load() => Load(DefaultSettingsPath);
+
+        /// <summary>
+        /// Load settings from the specified path. Exposed for testing and for future
+        /// multi-profile scenarios. Invalid or corrupt files yield default settings.
+        /// </summary>
+        internal static AppSettings Load(string path)
         {
+            AppSettings settings = new();
             try
             {
-                if (File.Exists(SettingsPath))
+                if (File.Exists(path))
                 {
-                    var json = File.ReadAllText(SettingsPath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    var json = File.ReadAllText(path);
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var loaded = JsonSerializer.Deserialize<AppSettings>(json);
+                        if (loaded != null) settings = loaded;
+                    }
                 }
             }
-            catch { }
-            return new AppSettings();
+            catch
+            {
+                // Fall through to defaults — never throw on settings load.
+                settings = new AppSettings();
+            }
+
+            settings.Sanitize();
+            return settings;
         }
 
-        public void Save()
+        public void Save() => Save(DefaultSettingsPath);
+
+        /// <summary>
+        /// Atomic save: write to a temp file, then replace the destination.
+        /// Prevents corruption when the process is terminated mid-write.
+        /// </summary>
+        internal void Save(string path)
         {
             try
             {
-                var dir = Path.GetDirectoryName(SettingsPath);
+                Sanitize();
+
+                var dir = Path.GetDirectoryName(path);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
+
                 var json = JsonSerializer.Serialize(this, _jsonOptions);
-                File.WriteAllText(SettingsPath, json);
+
+                // Write to sibling temp file first, then atomically replace.
+                var tempPath = path + ".tmp";
+                File.WriteAllText(tempPath, json);
+
+                if (File.Exists(path))
+                {
+                    // File.Replace is atomic on NTFS; falls back to copy+delete otherwise.
+                    try
+                    {
+                        File.Replace(tempPath, path, destinationBackupFileName: null);
+                    }
+                    catch
+                    {
+                        File.Copy(tempPath, path, overwrite: true);
+                        try { File.Delete(tempPath); } catch { }
+                    }
+                }
+                else
+                {
+                    File.Move(tempPath, path);
+                }
             }
-            catch { }
+            catch
+            {
+                // Saving settings must never crash the app.
+            }
+        }
+
+        /// <summary>
+        /// Repair invalid or out-of-range values and replace any nullified
+        /// collections that came from external (possibly hand-edited) JSON.
+        /// </summary>
+        internal void Sanitize()
+        {
+            // Null collections can appear when JSON explicitly stores "null" or when
+            // a future migration drops a property. Default to empty so callers can
+            // safely iterate/mutate.
+            HiddenSensorIds ??= new List<string>();
+            TraySensorIds ??= new List<string>();
+            LogSensorIds ??= new List<string>();
+
+            // Strings that feed into formatting / platform APIs must not be null.
+            if (string.IsNullOrWhiteSpace(TrayFontFamily)) TrayFontFamily = "Segoe UI";
+            if (string.IsNullOrWhiteSpace(ThemeMode)) ThemeMode = "Auto";
+
+            if (string.IsNullOrWhiteSpace(LogFormat))
+            {
+                LogFormat = "CSV";
+            }
+            else
+            {
+                var trimmed = LogFormat.Trim().ToUpperInvariant();
+                LogFormat = (trimmed == "CSV" || trimmed == "JSON" || trimmed == "TXT") ? trimmed : "CSV";
+            }
+
+            if (string.IsNullOrWhiteSpace(LogPath))
+            {
+                LogPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "hotcpu", "HotCPU_Log.csv");
+            }
+
+            // Clamp numeric settings. A tampered file should never cause a
+            // divide-by-zero, a 0ms timer, or a disabled UI.
+            if (RefreshIntervalMs < 250) RefreshIntervalMs = 250;
+            if (RefreshIntervalMs > 60_000) RefreshIntervalMs = 60_000;
+
+            if (LogIntervalSeconds < 1) LogIntervalSeconds = 1;
+            if (LogIntervalSeconds > 86_400) LogIntervalSeconds = 86_400;
+
+            if (FontSize < 6) FontSize = 6;
+            if (FontSize > 72) FontSize = 72;
+
+            // Thresholds must be strictly Warm < Hot < Critical, otherwise
+            // TemperatureReading.Level skips levels and tray colors flicker.
+            if (WarmThreshold >= HotThreshold) HotThreshold = WarmThreshold + 1;
+            if (HotThreshold >= CriticalThreshold) CriticalThreshold = HotThreshold + 1;
         }
     }
 }

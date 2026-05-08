@@ -805,25 +805,31 @@ namespace HotCPU
             return "CPU (System Estimate)";
         }
 
-        private float? GetMainCpuTemp(List<SensorTemp> sensors)
+        internal static float? GetMainCpuTemp(List<SensorTemp> sensors)
         {
+            // Restrict to temperature sensors up front. Without this guard, the
+            // fallback branches could pick up Voltage, Load, Power, Clock, etc.
+            // and present them as a "CPU temperature".
+            var temps = sensors.Where(s => s.Type == "Temperature").ToList();
+            if (temps.Count == 0) return null;
+
             // Priority order for main CPU temperature
             var priorities = new[] { "Package", "Tctl", "Tdie", "CPU", "Core (Tctl", "CCD" };
-            
+
             foreach (var priority in priorities)
             {
-                var match = sensors.FirstOrDefault(s => 
+                var match = temps.FirstOrDefault(s =>
                     s.Name.Contains(priority, StringComparison.OrdinalIgnoreCase));
                 if (match != null) return match.Temperature;
             }
 
             // Fallback to max of any core temps
-            var cores = sensors.Where(s => 
+            var cores = temps.Where(s =>
                 s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
                 s.Name.Contains("CCD", StringComparison.OrdinalIgnoreCase)).ToList();
-            if (cores.Any()) return cores.Max(s => s.Temperature);
+            if (cores.Count > 0) return cores.Max(s => s.Temperature);
 
-            return sensors.FirstOrDefault()?.Temperature;
+            return temps[0].Temperature;
         }
 
         private string GetHardwareTypeIcon(HardwareType type) => type switch
@@ -1002,6 +1008,12 @@ namespace HotCPU
             get
             {
                 var s = Settings ?? new AppSettings();
+                // Guard against NaN and negative sentinel temps. Pattern matching
+                // with NaN falls through every branch (NaN comparisons are false),
+                // which used to silently classify as Critical.
+                if (float.IsNaN(Temperature) || float.IsInfinity(Temperature) || Temperature <= 0)
+                    return TemperatureLevel.Cool;
+
                 return Temperature switch
                 {
                     var t when t < s.WarmThreshold => TemperatureLevel.Cool,

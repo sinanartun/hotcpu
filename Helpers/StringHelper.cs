@@ -6,11 +6,25 @@ namespace HotCPU.Helpers
 {
     public static class StringHelper
     {
+        /// <summary>
+        /// Extract the FIRST contiguous run of digits from a name (e.g. "Core #7 Speed 3600" -> 7).
+        /// Used only for sort ordering, so unmatched names return a high sentinel so they sort last.
+        /// Returns 999 on missing / unparseable / overflowing values.
+        /// </summary>
         public static int ExtractNumber(string name)
         {
             if (string.IsNullOrEmpty(name)) return 999;
-            var numStr = new string(name.Where(char.IsDigit).ToArray());
-            return int.TryParse(numStr, out var num) ? num : 999;
+
+            int i = 0;
+            // Skip non-digits
+            while (i < name.Length && !char.IsDigit(name[i])) i++;
+            if (i >= name.Length) return 999;
+
+            int start = i;
+            // Bound the match so absurdly long digit runs don't overflow.
+            while (i < name.Length && char.IsDigit(name[i]) && (i - start) < 9) i++;
+
+            return int.TryParse(name.AsSpan(start, i - start), out var num) ? num : 999;
         }
 
         public static string SimplifyHardwareName(string name)
