@@ -1179,8 +1179,23 @@ namespace HotCPU
                     SaveCurrentSettings();
                     _settings.Save();
                     
-                    // Restart application
-                    System.Diagnostics.Process.Start(Application.ExecutablePath);
+                    // Restart application. Prefer ProcessPath over
+                    // Application.ExecutablePath (more reliable under MSIX).
+                    try
+                    {
+                        var exe = Environment.ProcessPath;
+                        if (string.IsNullOrEmpty(exe))
+                            exe = Application.ExecutablePath;
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = exe,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLog.Error("Settings", "Restart after language change failed", ex);
+                    }
                     Application.Exit();
                 }
             }

@@ -21,6 +21,8 @@ namespace HotCPU
         private bool _disposed;
 
         private readonly HoverInfoForm _hoverForm = new HoverInfoForm();
+        private bool _driverWarningShown;
+        private ToolStripMenuItem? _driverStatusItem;
 
         public TrayIconManager(TemperatureService temperatureService, LoggerService loggerService, AppSettings settings, Action exitAction)
         {
@@ -28,6 +30,8 @@ namespace HotCPU
             _loggerService = loggerService;
             _settings = settings;
             _exitAction = exitAction;
+
+            DebugLog.Info("Tray", $"TrayIconManager ctor; log path = {DebugLog.LogPath}");
 
             _contextMenu = CreateContextMenu();
 
@@ -39,6 +43,7 @@ namespace HotCPU
 
         private void OnNotifyIconMouseClick(object? sender, MouseEventArgs e)
         {
+            DebugLog.Info("Tray", $"MouseClick button={e.Button} cursor=({Cursor.Position.X},{Cursor.Position.Y})");
             if (e.Button != MouseButtons.Left)
             {
                 return;
@@ -48,30 +53,235 @@ namespace HotCPU
             if (reading != null)
             {
                 _hoverForm.UpdateData(reading);
-                _hoverForm.ShowAtCursor();
+                var cursor = Cursor.Position;
+                var iconRect = new Rectangle(cursor.X - 12, cursor.Y - 12, 24, 24);
+                _hoverForm.Toggle(iconRect);
             }
         }
 
         private void OnNotifyIconDoubleClick(object? sender, EventArgs e)
         {
+            DebugLog.Info("Tray", "DoubleClick");
             ShowSettings();
         }
 
         private ContextMenuStrip CreateContextMenu()
         {
             var menu = new ContextMenuStrip();
-            
+
+            // When the context menu is about to show, hide the pinned hover
+            // panel so it can't overlap the menu and swallow clicks.
+            menu.Opening += (_, _) =>
+            {
+                DebugLog.Info("Menu", "Opening - hiding hover panel");
+                try { _hoverForm.HideWindow(); } catch (Exception ex) { DebugLog.Error("Menu", "hover hide failed", ex); }
+            };
+            menu.Opened += (_, _) => DebugLog.Info("Menu", "Opened");
+            menu.Closed += (_, e) => DebugLog.Info("Menu", $"Closed reason={e.CloseReason}");
+            menu.ItemClicked += (_, e) => DebugLog.Info("Menu", $"ItemClicked raw: {e.ClickedItem?.Text}");
+
+            _driverStatusItem = new ToolStripMenuItem("Install PawnIO driver (for CPU temperature)...")
+            {
+                Visible = false,
+            };
+            _driverStatusItem.Click += (s, e) =>
+            {
+                DebugLog.Info("Menu", "Install PawnIO clicked");
+                PromptInstallPawnIo();
+            };
+
             var settingsItem = new ToolStripMenuItem("Settings...");
-            settingsItem.Click += (s, e) => ShowSettings();
+            settingsItem.Click += (s, e) =>
+            {
+                DebugLog.Info("Menu", "Settings clicked");
+                ShowSettings();
+            };
 
             var exitItem = new ToolStripMenuItem("Exit");
-            exitItem.Click += (s, e) => _exitAction();
+            exitItem.Click += (s, e) =>
+            {
+                DebugLog.Info("Menu", "Exit clicked - invoking _exitAction");
+                try
+                {
+                    _exitAction();
+                    DebugLog.Info("Menu", "_exitAction returned");
+                }
+                catch (Exception ex)
+                {
+                    DebugLog.Error("Menu", "_exitAction threw", ex);
+                }
+            };
 
+            menu.Items.Add(_driverStatusItem);
+            menu.Items.Add(new ToolStripSeparator { Visible = false, Name = "DriverSeparator" });
             menu.Items.Add(settingsItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(exitItem);
 
             return menu;
+        }
+
+        private static void OpenPawnIoReleases()
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = CpuDriverHelper.PawnIoReleasesUrl,
+                    UseShellExecute = true,
+                });
+            }
+            catch
+            {
+                // Best-effort: if the shell cannot open a browser, there is
+                // nothing useful to show the user here.
+            }
+        }
+
+        private bool _driverInstallInProgress;
+
+        private async void PromptInstallPawnIo()
+        {
+            if (_driverInstallInProgress) return;
+
+            // If PawnIO is already installed, don't redownload the setup.
+            // Instead, re-open LibreHardwareMonitor so the driver that's
+            // sitting right there gets picked up. The common cause of hitting
+            // this path is: HotCPU started before PawnIO was installed, so
+            // LHM never saw it. A Reload() after install is all we need.
+            if (CpuDriverHelper.IsPawnIoInstalled())
+            {
+                MessageBox.Show(
+                    "PawnIO is already installed on this system. HotCPU will reconnect to it now.\n\n" +
+                    "If the CPU temperature still doesn't appear, wait a moment and open this menu again - the driver service may need a few seconds to settle after a fresh install.",
+                    "PawnIO already installed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                try { _temperatureService.Reload(); } catch { /* best-effort refresh */ }
+                _driverWarningShown = false;
+                return;
+            }
+
+            var choice = MessageBox.Show(
+                "HotCPU will download the official PawnIO driver (PawnIO_setup.exe, ~3 MB) from github.com/namazso/PawnIO.Setup and install it silently.\n\n" +
+                "The setup is signed by the PawnIO author. Windows will ask you once to approve the driver installation - no wizard windows to click through.\n\n" +
+                "Continue?",
+                "Install PawnIO driver",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Information,
+                MessageBoxDefaultButton.Button1);
+
+            if (choice == DialogResult.Cancel) return;
+
+            if (choice == DialogResult.No)
+            {
+                // Offer the manual link as a fallback so users can audit
+                // the binary themselves before installing.
+                OpenPawnIoReleases();
+                return;
+            }
+
+            _driverInstallInProgress = true;
+            if (_driverStatusItem != null)
+            {
+                _driverStatusItem.Enabled = false;
+                _driverStatusItem.Text = "Downloading PawnIO driver...";
+            }
+
+            // Two-phase progress indicator: flip to "Installing..." once the
+            // download finishes so the user knows something is still
+            // happening during the silent install.
+            var progress = new Progress<double>(pct =>
+            {
+                if (_driverStatusItem == null) return;
+                if (pct >= 1.0)
+                {
+                    _driverStatusItem.Text = "Installing PawnIO driver...";
+                }
+            });
+
+            PawnIoInstallResult result;
+            try
+            {
+                // Silent install: pass /S to NSIS so the setup wizard never
+                // appears. The UAC prompt for driver installation still
+                // surfaces because it's enforced by Windows, not the installer.
+                result = await PawnIoInstaller.DownloadAndRunAsync(silent: true, progress);
+            }
+            finally
+            {
+                _driverInstallInProgress = false;
+                if (_driverStatusItem != null)
+                {
+                    _driverStatusItem.Enabled = true;
+                    _driverStatusItem.Text = "Install PawnIO driver (for CPU temperature)...";
+                }
+            }
+
+            switch (result.Outcome)
+            {
+                case PawnIoInstallOutcome.Installed:
+                    // Re-open LHM so the freshly-registered driver is picked
+                    // up immediately. Without this, the tray keeps showing
+                    // dashes until the user restarts the app.
+                    try { _temperatureService.Reload(); } catch { /* best-effort refresh */ }
+
+                    MessageBox.Show(
+                        "PawnIO is installed. HotCPU will start reading your CPU temperature on the next refresh. " +
+                        "Restart HotCPU if the tray still shows dashes.",
+                        "HotCPU",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    // Reset the one-shot warning so if the user uninstalls
+                    // later we can prompt again.
+                    _driverWarningShown = false;
+                    break;
+
+                case PawnIoInstallOutcome.UserCancelled:
+                    // User cancelled the UAC prompt or closed the wizard - no-op.
+                    break;
+
+                case PawnIoInstallOutcome.HashMismatch:
+                    MessageBox.Show(
+                        "The downloaded PawnIO installer did not match the expected hash and was discarded. " +
+                        "Please install it manually from the official page.",
+                        "HotCPU",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    OpenPawnIoReleases();
+                    break;
+
+                case PawnIoInstallOutcome.DownloadFailed:
+                case PawnIoInstallOutcome.NotAvailable:
+                    MessageBox.Show(
+                        $"Could not download the PawnIO installer.{(result.Detail != null ? $"\nReason: {result.Detail}" : string.Empty)}\n\n" +
+                        "You can install it manually from the official page.",
+                        "HotCPU",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    OpenPawnIoReleases();
+                    break;
+
+                case PawnIoInstallOutcome.InstallerFailed:
+                    // Surface the exit code and any captured detail so users
+                    // (and we) can tell the difference between "rejected
+                    // because already installed", "access denied" and a real
+                    // failure. PawnIO.Setup 2.2.0 uses DOS error codes, so
+                    // looking up the exit code in `net helpmsg <code>` gives
+                    // a human-readable explanation.
+                    var exitInfo = result.ExitCode.HasValue
+                        ? $"Exit code: {result.ExitCode.Value} (0x{result.ExitCode.Value:X})"
+                        : "No exit code reported";
+                    MessageBox.Show(
+                        $"The PawnIO installer reported an error.\n\n{exitInfo}" +
+                        (result.Detail != null ? $"\n{result.Detail}" : string.Empty) +
+                        "\n\nYou can retry or install it manually from the official page.",
+                        "HotCPU",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    break;
+            }
         }
 
         private SettingsForm? _currentSettingsForm;
@@ -111,14 +321,23 @@ namespace HotCPU
             {
                 try 
                 {
-                    _contextMenu.Invoke(() => OnTemperatureChanged(reading));
+                    // BeginInvoke: never block the temperature poller on the UI
+                    // thread (avoids deadlocks with Reload/service locks).
+                    _contextMenu.BeginInvoke(() => OnTemperatureChanged(reading));
                 }
                 catch (ObjectDisposedException) { }
                 catch (InvalidOperationException) { }
                 return;
             }
 
-            UpdateTrayIcons();
+            try
+            {
+                UpdateTrayIcons();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Error("Tray", "UpdateTrayIcons failed", ex);
+            }
         }
 
         private void UpdateTrayIcons()
@@ -126,6 +345,9 @@ namespace HotCPU
             if (_disposed) return;
             var reading = _temperatureService.CurrentReading;
             if (reading == null) return;
+
+            // Reveal / hide the PawnIO shortcut in the context menu.
+            UpdateDriverStatusMenu(reading);
 
             var activeIds = new HashSet<string>(_settings.TraySensorIds);
             
@@ -179,7 +401,7 @@ namespace HotCPU
                     _notifyIcons[id] = newIcon;
                 }
 
-                var notifyIcon = _notifyIcons[id];
+                    var notifyIcon = _notifyIcons[id];
                 
                 // Calculate value for this icon
                 float temp = 0;
@@ -197,6 +419,12 @@ namespace HotCPU
                 {
                     temp = reading.Temperature;
                     level = reading.Level;
+                    if (!reading.HasCpuTemperature)
+                    {
+                        // CPU sensor is unavailable - don't pretend there's a
+                        // value. Suppress threshold coloring and show dashes.
+                        suppressColorChange = true;
+                    }
                 }
                 else if (allSensors.TryGetValue(id, out var sensor))
                 {
@@ -241,7 +469,13 @@ namespace HotCPU
                     string text = "";
                     if (_settings.ShowTrayIconTemperature)
                     {
-                        if (isThroughputSensor && selectedSensor != null)
+                        if (id == "DEFAULT_CPU" && !reading.HasCpuTemperature)
+                        {
+                            // No real CPU reading - render dashes instead of
+                            // whatever the fallback happened to latch onto.
+                            text = "--";
+                        }
+                        else if (isThroughputSensor && selectedSensor != null)
                         {
                             text = FormatThroughputInline(selectedSensor);
                         }
@@ -270,6 +504,14 @@ namespace HotCPU
                         suppressColorChange,
                         renderBadge);
                     oldIcon?.Dispose();
+
+                    // NotifyIcon.Text is limited to 63 characters on older
+                    // Windows versions; the Windows 10/11 API accepts more but
+                    // we keep the message short to stay compatible.
+                    string hoverText = id == "DEFAULT_CPU"
+                        ? TruncateTooltip(reading.TooltipText)
+                        : "HotCPU";
+                    try { notifyIcon.Text = hoverText; } catch { }
                 }
                 catch { }
             }
@@ -277,6 +519,64 @@ namespace HotCPU
             // Link HoverForm update if visible
             if (_hoverForm.Visible)
                  _hoverForm.UpdateData(reading);
+        }
+
+        private static string TruncateTooltip(string text)
+        {
+            // NotifyIcon.Text has a historical 63-character limit. Keep within
+            // bounds and append an ellipsis when we truncate.
+            const int Limit = 63;
+            if (string.IsNullOrEmpty(text) || text.Length <= Limit) return text ?? string.Empty;
+            return text.Substring(0, Limit - 1) + "…";
+        }
+
+        private void UpdateDriverStatusMenu(TemperatureReading reading)
+        {
+            bool needsDriver = reading.CpuStatus == CpuSensorStatus.DriverMissing;
+
+            if (_driverStatusItem != null)
+            {
+                _driverStatusItem.Visible = needsDriver;
+            }
+
+            // Toggle the separator that sits right after the status item.
+            if (_contextMenu.Items["DriverSeparator"] is ToolStripSeparator sep)
+            {
+                sep.Visible = needsDriver;
+            }
+
+            if (needsDriver && !_driverWarningShown)
+            {
+                _driverWarningShown = true;
+                ShowDriverMissingBalloon();
+            }
+        }
+
+        private void ShowDriverMissingBalloon()
+        {
+            // Use the first visible tray icon to host the balloon. There will
+            // always be at least one by the time this runs because
+            // UpdateTrayIcons creates DEFAULT_CPU on the first call.
+            NotifyIcon? host = null;
+            foreach (var ni in _notifyIcons.Values)
+            {
+                if (ni.Visible) { host = ni; break; }
+            }
+            if (host == null) return;
+
+            try
+            {
+                host.BalloonTipTitle = "CPU sensor unavailable";
+                host.BalloonTipText =
+                    "HotCPU couldn't read your CPU temperature. Install the free PawnIO driver to enable Ryzen/Intel readings.\n" +
+                    "Right-click the tray icon to open the download page.";
+                host.BalloonTipIcon = ToolTipIcon.Warning;
+                host.ShowBalloonTip(8000);
+            }
+            catch
+            {
+                // Showing a balloon is a nicety, never fatal.
+            }
         }
 
         public void Dispose()

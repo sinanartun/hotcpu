@@ -92,8 +92,12 @@ namespace HotCPU
         {
             if (value <= min) return from;
             if (value >= max) return to;
-            
-            float t = (float)(value - min) / (max - min);
+            int span = max - min;
+            if (span <= 0) return to;
+
+            float t = (float)(value - min) / span;
+            if (float.IsNaN(t) || float.IsInfinity(t)) return from;
+            t = Math.Clamp(t, 0f, 1f);
             return Color.FromArgb(
                 255,
                 (int)(from.R + (to.R - from.R) * t),
@@ -327,10 +331,19 @@ namespace HotCPU
 
         private static List<int> GetPreferredIconSizes()
         {
+            // Previously this rendered ~10 bitmaps (16..64) on every tray
+            // refresh (often 1 Hz × N icons). That burned GDI handles and
+            // CPU, and could hard-crash long-running sessions on low-resource
+            // machines. One size matching the current tray is enough; Windows
+            // will scale if DPI changes (next refresh picks up the new size).
             int systemSize = GetTrayIconSizePx();
-            var sizes = new HashSet<int> { 16, 20, 24, 28, 32, 36, 40, 48, 64, systemSize };
-            var ordered = sizes.Where(s => s > 0 && s <= 64).OrderBy(s => s).ToList();
-            return ordered.Count > 0 ? ordered : new List<int> { 16 };
+            if (systemSize <= 0) systemSize = 16;
+            if (systemSize > 64) systemSize = 64;
+
+            // Include 16 as a tiny fallback for shell hosts that only sample
+            // the first directory entry at 16×16.
+            var sizes = new HashSet<int> { 16, systemSize };
+            return sizes.OrderBy(s => s).ToList();
         }
 
         [DllImport("user32.dll")]

@@ -10,16 +10,45 @@ using System.Drawing.Drawing2D;
 namespace HotCPU
 {
     /// <summary>
-    /// A custom borderless form that acts as a rich tooltip.
+    /// A borderless "inspector" panel that doubles as a rich tooltip for the
+    /// tray icon. The previous version used a cursor-proximity hide-timer
+    /// that would close the panel the moment the user tried to mouse onto
+    /// it; this version:
+    ///   * Anchors above/below the tray icon, not the cursor.
+    ///   * Uses MouseLeave + a grace timer so incidental pointer jitter
+    ///     never closes it.
+    ///   * Supports scrolling when content outgrows the screen.
+    ///   * Supports explicit close via ESC, a close button, or a second
+    ///     click on the tray icon.
     /// </summary>
     internal class HoverInfoForm : Form
     {
         private TemperatureReading? _currentReading;
-        private readonly System.Windows.Forms.Timer _monitorTimer;
-        private Point _lastShowLocation;
+
+        // Grace timer: counts up from 0 while cursor is OUTSIDE the form.
+        // If it ever re-enters, the counter resets. Close at >= DismissAfterTicks.
+        private readonly System.Windows.Forms.Timer _dismissTimer;
+        private int _ticksOutside;
+        private bool _pinned;
+        private Rectangle _anchorRect;
+
+        // Tunables
+        private const int DismissTickInterval = 50;   // ms
+        private const int DismissAfterTicks = 12;     // -> 600ms grace window
+        private const int AnchorGapPx = 4;            // vertical space between tray and form
+        private const int MaxHeightPercent = 80;      // cap form height at this % of workarea
+        private const int ContentWidth = 560;
+
         private readonly Font _fontBold;
         private readonly Font _fontNormal;
         private readonly Font _fontEmoji;
+
+        // Inner canvas holds the drawn content. An AutoScroll container means
+        // tall readings scroll inside the form instead of being clipped at
+        // screen edges (which the previous version did).
+        private readonly Panel _scrollHost;
+        private readonly ContentCanvas _canvas;
+        private readonly Button _closeButton;
 
         public HoverInfoForm()
         {
@@ -29,15 +58,59 @@ namespace HotCPU
             TopMost = true;
             Padding = new Padding(1);
             DoubleBuffered = true;
+            KeyPreview = true;
+            Size = new Size(ContentWidth + 2, 120);
 
             _fontBold = new Font("Segoe UI", 9f, FontStyle.Bold);
             _fontNormal = new Font("Segoe UI", 9f, FontStyle.Regular);
             _fontEmoji = new Font("Segoe UI Emoji", 9f);
 
-            _monitorTimer = new System.Windows.Forms.Timer { Interval = 50 }; // Ultra fast check
-            _monitorTimer.Tick += MonitorTimer_Tick;
+            // Close chip (top-right) so users always have an obvious way out.
+            _closeButton = new Button
+            {
+                Text = "✕",
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(22, 22),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Location = new Point(ContentWidth - 22, 2),
+                TabStop = false,
+                ForeColor = Color.Gainsboro,
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand,
+                FlatAppearance = { BorderSize = 0 },
+            };
+            _closeButton.Click += (_, _) => HideWindow();
 
-            Paint += OnPaint;
+            _scrollHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(24, 24, 24),
+                Padding = new Padding(0, 26, 0, 4), // leave room for close button
+            };
+            _canvas = new ContentCanvas(this)
+            {
+                Location = new Point(0, 0),
+                Width = ContentWidth - SystemInformation.VerticalScrollBarWidth,
+                BackColor = Color.FromArgb(24, 24, 24),
+            };
+            _scrollHost.Controls.Add(_canvas);
+            Controls.Add(_scrollHost);
+            Controls.Add(_closeButton);
+            _closeButton.BringToFront();
+
+            _dismissTimer = new System.Windows.Forms.Timer { Interval = DismissTickInterval };
+            _dismissTimer.Tick += DismissTimer_Tick;
+
+            KeyDown += (_, e) =>
+            {
+                if (e.KeyCode == Keys.Escape) HideWindow();
+            };
+
+            // Re-enter events reset the grace timer.
+            _scrollHost.MouseEnter += (_, _) => _ticksOutside = 0;
+            _canvas.MouseEnter     += (_, _) => _ticksOutside = 0;
+            _closeButton.MouseEnter += (_, _) => _ticksOutside = 0;
         }
 
         private void ApplyTheme()
@@ -45,78 +118,184 @@ namespace HotCPU
             if (_currentReading?.Settings == null) return;
             bool isDark = Helpers.ThemeHelper.IsDarkMode(_currentReading.Settings);
             BackColor = Helpers.ThemeHelper.GetBackgroundColor(isDark);
+            _scrollHost.BackColor = Helpers.ThemeHelper.GetHeaderColor(isDark);
+            _canvas.BackColor = Helpers.ThemeHelper.GetHeaderColor(isDark);
+            _closeButton.ForeColor = Helpers.ThemeHelper.GetTextColor(isDark);
         }
 
         public void UpdateData(TemperatureReading reading)
         {
+            if (IsDisposed) return;
+
             if (InvokeRequired)
             {
-                Invoke(() => UpdateData(reading));
+                try
+                {
+                    // BeginInvoke avoids deadlocking a background poll thread that
+                    // is waiting on the UI while the UI waits on a lock/service.
+                    BeginInvoke(() => UpdateData(reading));
+                }
+                catch (ObjectDisposedException) { }
+                catch (InvalidOperationException) { }
                 return;
             }
 
-            _currentReading = reading;
-            ApplyTheme();
-            Size = MeasureSize();
-            Invalidate();
-            if (Visible && !Bounds.Contains(Cursor.Position)) UpdatePosition(Cursor.Position);
+            if (IsDisposed) return;
+
+            try
+            {
+                _currentReading = reading;
+                ApplyTheme();
+                ResizeContent();
+                _canvas.Invalidate();
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
         }
 
-        // Keep compatibility
-        public void UpdateText(string text) { }
+        private void ResizeContent()
+        {
+            if (_currentReading == null) return;
+            int contentHeight = MeasureContentHeight(_currentReading);
+            _canvas.Height = contentHeight;
 
+            var screen = Screen.FromControl(this);
+            int maxH = (int)(screen.WorkingArea.Height * MaxHeightPercent / 100d);
+            int desired = Math.Min(contentHeight + 32 /* padding + close row */, maxH);
+            // Only resize width once; keep height flexible.
+            Width = ContentWidth + 2;
+            Height = desired;
+        }
+
+        public void UpdateText(string text) { /* kept for compatibility */ }
+
+        /// <summary>
+        /// Show the inspector anchored to the given tray icon bounds. The caller
+        /// passes the icon rectangle so the form can position itself with a
+        /// stable anchor and draw a short connector gap - moving the cursor
+        /// toward the form no longer instantly dismisses it.
+        /// </summary>
+        public void ShowAnchored(Rectangle iconBounds, bool pin)
+        {
+            _pinned = pin;
+            _anchorRect = iconBounds;
+
+            if (_currentReading != null) ResizeContent();
+
+            var screen = Screen.FromPoint(new Point(iconBounds.X, iconBounds.Y));
+            int x = iconBounds.X + iconBounds.Width / 2 - Width / 2;
+            int y = iconBounds.Top - Height - AnchorGapPx;
+
+            // If there isn't room above, drop below the icon.
+            if (y < screen.WorkingArea.Top)
+                y = iconBounds.Bottom + AnchorGapPx;
+
+            // Clamp horizontally within the working area.
+            if (x + Width > screen.WorkingArea.Right) x = screen.WorkingArea.Right - Width - 4;
+            if (x < screen.WorkingArea.Left) x = screen.WorkingArea.Left + 4;
+            if (y + Height > screen.WorkingArea.Bottom) y = screen.WorkingArea.Bottom - Height - 4;
+            if (y < screen.WorkingArea.Top) y = screen.WorkingArea.Top + 4;
+
+            Location = new Point(x, y);
+            _ticksOutside = 0;
+
+            if (!Visible) Show();
+            BringToFront();
+            if (!_pinned) _dismissTimer.Start();
+            else _dismissTimer.Stop();
+        }
+
+        /// <summary>
+        /// Backwards-compatible cursor-anchor entry point. Prefer
+        /// <see cref="ShowAnchored"/> which knows the tray icon rect.
+        /// </summary>
         public void ShowAtCursor()
         {
             var cursor = Cursor.Position;
-            // Always update the "valid" location while the external controller (TryIcon) reports valid hover
-            _lastShowLocation = cursor;
-
-            if (!Visible)
-            {
-                UpdatePosition(cursor);
-                Show();
-                _monitorTimer.Start();
-            }
-            if (!_monitorTimer.Enabled) _monitorTimer.Start();
+            // Treat the cursor point as a 1x1 anchor; position will be
+            // recalculated by ShowAnchored.
+            ShowAnchored(new Rectangle(cursor.X - 8, cursor.Y - 8, 16, 16), pin: false);
         }
 
-        private Size MeasureSize()
+        /// <summary>
+        /// Called by the tray icon on a left-click. If the form is already
+        /// visible, hide it; otherwise show it pinned so hover tracking
+        /// doesn't close it out from under the user.
+        /// </summary>
+        public void Toggle(Rectangle iconBounds)
         {
-            if (_currentReading == null) return new Size(100, 50);
+            DebugLog.Info("Hover", $"Toggle Visible={Visible} bounds={iconBounds}");
+            if (Visible)
+            {
+                HideWindow();
+            }
+            else
+            {
+                ShowAnchored(iconBounds, pin: true);
+            }
+        }
 
-            using var g = CreateGraphics();
-            float maxWidth = 200; 
-            float height = 10;
-            
-            float rowHeight = 24;
-            float headerHeight = 22;
+        public void HideWindow()
+        {
+            DebugLog.Info("Hover", "HideWindow");
+            _dismissTimer.Stop();
+            _pinned = false;
+            if (Visible) Hide();
+        }
 
-            foreach (var hw in _currentReading.AllTemps.Where(h => h.Sensors.Any()))
+        private void DismissTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_pinned) return;
+
+            var cursor = Cursor.Position;
+            // Allow cursor anywhere in the form plus a short corridor back to
+            // the anchor icon. That corridor is the union of the form rect
+            // and the anchor rect, extended by a generous tolerance.
+            var corridor = Rectangle.Union(Bounds, _anchorRect);
+            corridor.Inflate(6, 6);
+
+            if (corridor.Contains(cursor))
+            {
+                _ticksOutside = 0;
+            }
+            else
+            {
+                _ticksOutside++;
+                if (_ticksOutside >= DismissAfterTicks)
+                {
+                    HideWindow();
+                }
+            }
+        }
+
+        // === Content rendering ==============================================
+
+        private int MeasureContentHeight(TemperatureReading reading)
+        {
+            int height = 10;
+            const int rowHeight = 24;
+            const int headerHeight = 22;
+
+            if (reading.CpuStatus == CpuSensorStatus.DriverMissing)
+                height += 18 + 18 + 6;
+
+            foreach (var hw in reading.AllTemps.Where(h => h.Sensors.Any()))
             {
                 var visibleSensors = GetSortedSensors(hw.Sensors);
-                if (!visibleSensors.Any()) continue;
-
+                if (visibleSensors.Count == 0) continue;
                 height += headerHeight;
-                height += (visibleSensors.Count * rowHeight);
+                height += visibleSensors.Count * rowHeight;
                 height += 5;
-
-                var sizeIcon = g.MeasureString(hw.Icon, _fontEmoji);
-                var sizeName = g.MeasureString(hw.Name, _fontBold);
-                var totalWidth = sizeIcon.Width + sizeName.Width;
-                
-                if (totalWidth + 40 > maxWidth) maxWidth = totalWidth + 40;
             }
 
-            return new Size(550, (int)height + 10);
+            return Math.Max(height + 10, 80);
         }
 
-        private void OnPaint(object? sender, PaintEventArgs e)
+        internal void RenderContent(Graphics g, Rectangle clip)
         {
-            var g = e.Graphics;
             if (_currentReading?.Settings == null) return;
 
             bool isDark = Helpers.ThemeHelper.IsDarkMode(_currentReading.Settings);
-            Color bgColor = Helpers.ThemeHelper.GetBackgroundColor(isDark);
             Color headerColor = Helpers.ThemeHelper.GetHeaderColor(isDark);
             Color textColor = Helpers.ThemeHelper.GetTextColor(isDark);
             Color dimTextColor = Helpers.ThemeHelper.GetDimTextColor(isDark);
@@ -126,30 +305,39 @@ namespace HotCPU
 
             float y = 10;
             float xName = 10;
-            // Align charts to the right side
             float chartWidth = 220;
-            float xChart = Width - chartWidth - 10; // Right align with 10px padding
-            float xValue = xChart - 10; // Value ends before chart
-            
+            float xChart = _canvas.Width - chartWidth - 16;
             float rowHeight = 24;
 
             using var brushText = new SolidBrush(textColor);
             using var brushDim = new SolidBrush(dimTextColor);
             using var penGrid = new Pen(gridColor, 1f);
 
+            if (_currentReading.CpuStatus == CpuSensorStatus.DriverMissing)
+            {
+                using var warnBrush = new SolidBrush(Color.FromArgb(0xFF, 0xA5, 0x00));
+                const string line1 = "⚠  CPU temperature unavailable";
+                const string line2 = "Install PawnIO to enable Ryzen / Intel sensors (right-click tray → Install PawnIO...)";
+                g.DrawString(line1, _fontBold, warnBrush, xName, y);
+                y += 18;
+                g.DrawString(line2, _fontNormal, brushDim, xName, y);
+                y += 18;
+                g.DrawLine(penGrid, xName, y, _canvas.Width - 10, y);
+                y += 6;
+            }
+
             foreach (var hw in _currentReading.AllTemps.Where(h => h.Sensors.Any()))
             {
                 var visibleSensors = GetSortedSensors(hw.Sensors);
-                if (!visibleSensors.Any()) continue;
+                if (visibleSensors.Count == 0) continue;
 
                 g.DrawString(hw.Icon, _fontEmoji, Brushes.Orange, xName, y);
-                
                 var iconSize = g.MeasureString(hw.Icon, _fontEmoji);
-                float textX = xName + iconSize.Width - 5; 
-                if (textX < xName + 18) textX = xName + 18; 
+                float textX = xName + iconSize.Width - 5;
+                if (textX < xName + 18) textX = xName + 18;
 
                 g.DrawString(hw.Name, _fontBold, Brushes.Orange, textX, y);
-                g.DrawLine(penGrid, xName, y + 18, Width - 10, y + 18);
+                g.DrawLine(penGrid, xName, y + 18, _canvas.Width - 10, y + 18);
                 y += 22;
 
                 foreach (var sensor in visibleSensors)
@@ -158,17 +346,13 @@ namespace HotCPU
                     if (name.Length > 28) name = name.Substring(0, 25) + "...";
                     g.DrawString(name, _fontNormal, brushDim, xName, y);
 
-                    // string val = $"{sensor.RoundedTemp}°C";
-                    // Human Readable Formatting
                     string finalValStr = FormatValue(sensor.Value, sensor.Unit);
-                    
-                    // Right Align Value to left of Chart
                     var sizeVal = g.MeasureString(finalValStr, _fontBold);
-                    float valDrawX = xChart - 5 - sizeVal.Width; // 5px padding from chart
-                    
+                    float valDrawX = xChart - 5 - sizeVal.Width;
+
                     g.DrawString(finalValStr, _fontBold, brushText, valDrawX, y);
 
-                    // Style Definitions
+                    // Chart style per unit (kept in parity with the prior build).
                     Color chartColor = Color.DeepSkyBlue;
                     float? fixedMin = null;
                     float? fixedMax = null;
@@ -177,15 +361,13 @@ namespace HotCPU
 
                     if (sensor.Unit == "°C")
                     {
-                         // Style: Orange (#FF4500), Thick Line, Fixed Scale 30-100
-                         chartColor = Color.OrangeRed; 
-                         lineThickness = 2.5f;
-                         fixedMin = 30f;
-                         fixedMax = 100f;
+                        chartColor = Color.OrangeRed;
+                        lineThickness = 2.5f;
+                        fixedMin = 30f;
+                        fixedMax = 100f;
                     }
                     else if (sensor.Unit == "%")
                     {
-                        // Style: Green (#00FF00), Fill Area, Fixed Scale 0-100
                         chartColor = Color.Lime;
                         fillArea = true;
                         fixedMin = 0f;
@@ -193,39 +375,21 @@ namespace HotCPU
                     }
                     else if (sensor.Unit == "W")
                     {
-                        // Style: Yellow (#FFFF00), Thin Line, Fixed Scale 0 - [TDP + 20%]
                         chartColor = Color.Yellow;
-                        lineThickness = 1.5f;
                         fixedMin = 0f;
-                        // Default TDP 125W if not set, plus 20%
                         float tdp = _currentReading.Settings.CpuTdp > 0 ? _currentReading.Settings.CpuTdp : 125f;
                         fixedMax = tdp * 1.2f;
                     }
                     else if (sensor.Unit == "MHz")
                     {
-                        // Style: Blue (#00BFFF), Thin Line, Fixed Scale Base - Boost
                         chartColor = Color.DeepSkyBlue;
-                        lineThickness = 1.5f;
                         fixedMin = _currentReading.Settings.CpuBaseClock;
                         fixedMax = _currentReading.Settings.CpuBoostClock;
-                        
-                        // Safety: if base >= boost, default to auto-scale behavior or safe fallback
-                        if (fixedMin >= fixedMax) 
-                        {
-                            fixedMin = 0;
-                            fixedMax = 5000;
-                        }
+                        if (fixedMin >= fixedMax) { fixedMin = 0; fixedMax = 5000; }
                     }
                     else
                     {
-                         // Default / Fallback
-                         chartColor = _currentReading.Settings.GetWarmColorValue(); 
-                         if (_currentReading.Settings.UseGradientColors)
-                         {
-                             // Use original gradient logic for other sensors? Or just simplified.
-                             // Keeping it simple for now as requested styles cover the main ones.
-                             // If "Other", use simple auto-scale.
-                         }
+                        chartColor = _currentReading.Settings.GetWarmColorValue();
                     }
 
                     DrawSparkline(g, xChart, y, chartWidth, rowHeight - 2, sensor.History, sensor.Temperature, chartColor, fixedMin, fixedMax, fillArea, lineThickness);
@@ -235,52 +399,52 @@ namespace HotCPU
                 y += 5;
             }
         }
-        
-        protected override void OnMouseClick(MouseEventArgs e)
+
+        protected override bool ShowWithoutActivation => true;
+
+        protected override CreateParams CreateParams
         {
-            base.OnMouseClick(e);
-            
-            // Check Benchmark Button Click - REMOVED
+            get
+            {
+                // WS_EX_TOOLWINDOW keeps the form out of Alt-Tab and the taskbar;
+                // WS_EX_NOACTIVATE prevents stealing focus from whatever the
+                // user is working on.
+                const int WS_EX_NOACTIVATE = 0x08000000;
+                const int WS_EX_TOOLWINDOW = 0x00000080;
+                var cp = base.CreateParams;
+                cp.ExStyle |= WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+                return cp;
+            }
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _fontBold?.Dispose();
+                _fontNormal?.Dispose();
+                _fontEmoji?.Dispose();
+                _dismissTimer?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        // === Sensor sorting / filtering (unchanged from previous build) =====
 
         private bool IsVisible(SensorTemp s)
         {
-             if (_currentReading?.Settings?.HiddenSensorIds == null) return true;
-             
-             // Check User Preference
-             if (_currentReading.Settings.HiddenSensorIds.Contains(s.Identifier)) return false;
-
-             // Check Optimization Rules
-             return !IsSensorHiddenByOptimization(s);
+            if (_currentReading?.Settings?.HiddenSensorIds == null) return true;
+            if (_currentReading.Settings.HiddenSensorIds.Contains(s.Identifier)) return false;
+            return !IsSensorHiddenByOptimization(s);
         }
 
-        private bool IsSensorHiddenByOptimization(SensorTemp s)
+        private static bool IsSensorHiddenByOptimization(SensorTemp s)
         {
-            // Target Entity: Any row matching the RegEx pattern Core #\d+
-            // We use a compiled regex or simple string checking. Given the frequency (Paint), simple string checks are faster if sufficient.
-            // But requirement said "RegEx pattern Core #\d+".
-            // "Core #1", "Core #10", etc.
-            
-            // Optimization: first check if it contains "Core #" to avoid Regex overhead on everything
             if (!s.Name.Contains("Core #")) return false;
-
-            // Optional: strict Regex check if needed, but string check above is likely enough context
-            // if (!Regex.IsMatch(s.Name, @"Core #\d+")) return false; 
-
-            // IF row contains SMU (System Management Unit power) -> ACTION: Hide.
             if (s.Name.Contains("SMU", StringComparison.OrdinalIgnoreCase)) return true;
-
-            // IF row contains VID (Voltage ID request) -> ACTION: Hide.
             if (s.Name.Contains("VID", StringComparison.OrdinalIgnoreCase)) return true;
-
-            // IF row contains Effective (Effective Clock) -> ACTION: Hide (Unless diagnosing clock stretching).
             if (s.Name.Contains("Effective", StringComparison.OrdinalIgnoreCase)) return true;
-
-            // IF row contains Usage -> ACTION: Keep
-            // (Implicitly kept if it doesn't match above)
-            
             return false;
-
         }
 
         private List<SensorTemp> GetSortedSensors(List<SensorTemp> sensors)
@@ -293,28 +457,14 @@ namespace HotCPU
                 .ToList();
         }
 
-        private int GetSensorBlockPriority(SensorTemp s)
+        private static int GetSensorBlockPriority(SensorTemp s)
         {
-            // Block A: Global Health (Top Priority)
-            // 1. Total CPU Usage
-            // 2. Core Max (Temperature)
-            // 3. CPU Package Power
-            // 4. DRAM Power
-            
             if (s.Name.Equals("Total CPU Usage", StringComparison.OrdinalIgnoreCase)) return 0;
             if (s.Name.Equals("Core Max", StringComparison.OrdinalIgnoreCase)) return 1;
             if (s.Name.Contains("Package Power", StringComparison.OrdinalIgnoreCase)) return 2;
             if (s.Name.Contains("DRAM Power", StringComparison.OrdinalIgnoreCase)) return 3;
-
-            // Block B: Load Balancing (Usage) - Grouped Contiguously
-            // Assumes "Core #X Usage" or similar pattern where Unit is %
             if (s.Unit == "%" && s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase)) return 10;
-
-            // Block C: Frequency Floor/Ceiling
-            // Group Core #0 Clock through Core #N Clock together below Usage
             if (s.Name.Contains("Clock", StringComparison.OrdinalIgnoreCase) && s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase)) return 20;
-
-            // Block D: Everything else
             return 99;
         }
 
@@ -323,204 +473,115 @@ namespace HotCPU
             if (history == null || history.Length < 2) return;
 
             bool isDark = _currentReading?.Settings != null && Helpers.ThemeHelper.IsDarkMode(_currentReading.Settings);
-            
-            // Background (Subtle frame or transparent)
             Color gridColor = isDark ? Color.FromArgb(60, 60, 60) : Color.FromArgb(200, 200, 200);
             Color chartBg = isDark ? Color.FromArgb(30, 30, 30) : Color.FromArgb(245, 245, 245);
-            
+
             using (var bgBrush = new SolidBrush(chartBg))
                 g.FillRectangle(bgBrush, x, y, w, h);
-            
-            // Grid Lines (Vertical & Horizontal)
+
             using (var penGrid = new Pen(gridColor, 1f) { DashStyle = DashStyle.Dot })
             {
-                // Horizontal (Mid)
                 g.DrawLine(penGrid, x, y + h / 2, x + w, y + h / 2);
-                
-                // Vertical (split into 4 sections)
                 float stepW = w / 4;
-                for (int i=1; i<4; i++)
+                for (int i = 1; i < 4; i++)
                     g.DrawLine(penGrid, x + i * stepW, y, x + i * stepW, y + h);
             }
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             float min, max;
-
             if (fixedMin.HasValue && fixedMax.HasValue)
             {
-                min = fixedMin.Value;
-                max = fixedMax.Value;
+                min = fixedMin.Value; max = fixedMax.Value;
             }
             else
             {
-                // Auto-scale logic
-                min = history.Min();
-                max = history.Max();
-                // Force some range to prevent flatline weirdness
-                if (max - min < 5) 
-                {
-                    float mid = (min + max) / 2;
-                    min = mid - 5;
-                    if (min < 0) min = 0;
-                    max = mid + 5;
-                }
+                min = history.Min(); max = history.Max();
+                if (max - min < 5) { float mid = (min + max) / 2; min = mid - 5; if (min < 0) min = 0; max = mid + 5; }
             }
 
-            // Fixed scale logic:
-            // The width 'w' represents the full capacity (TemperatureService.MAX_HISTORY).
-            // Data should fill from the right.
-            
-            int maxCapacity = TemperatureService.MAX_HISTORY;
-            // Ensure we don't divide by zero if maxCapacity is 1 (unlikely)
-            float stepX = w / (Math.Max(maxCapacity, 2) - 1); 
+            // Guard against zero-range (identical fixedMin/Max or flat history)
+            // which would produce NaN coordinates and flaky GDI+ draws.
+            if (float.IsNaN(min) || float.IsNaN(max) || float.IsInfinity(min) || float.IsInfinity(max))
+            {
+                min = 0; max = 1;
+            }
+            if (max - min < 0.001f)
+            {
+                max = min + 1f;
+            }
 
-            // Calculate starting X offset so the latest data point lines up with the right edge
-            // If we have N points, we are missing (Capacity - N) points on the left.
-            // X start = x + (Capacity - Count) * stepX
-            int missingPoints = maxCapacity - history.Length;
-            if (missingPoints < 0) missingPoints = 0;
-            
+            int maxCapacity = TemperatureService.MAX_HISTORY;
+            float range = max - min;
+            float stepX = w / (Math.Max(maxCapacity, 2) - 1);
+            int missingPoints = Math.Max(0, maxCapacity - history.Length);
             float startX = x + (missingPoints * stepX);
 
-            var points = new List<PointF>();  // Use List for flexibility
-            
+            var points = new List<PointF>();
             for (int i = 0; i < history.Length; i++)
             {
                 float val = history[i];
+                if (float.IsNaN(val) || float.IsInfinity(val)) continue;
                 float px = startX + (i * stepX);
-                
-                // Invert Y because screen starts at top
-                // Clamp normalization for fixed scales
-                float normalized = (val - min) / (max - min);
+                float normalized = (val - min) / range;
                 if (normalized < 0) normalized = 0;
                 if (normalized > 1) normalized = 1;
-                
                 float py = y + h - (normalized * h);
                 points.Add(new PointF(px, py));
             }
 
-            if (points.Count < 2) 
+            if (points.Count < 2)
             {
-                // Draw a single dot if we have 1 point
                 if (points.Count == 1)
                 {
-                     using var dotBrush = new SolidBrush(color);
-                     g.FillEllipse(dotBrush, points[0].X - 2, points[0].Y - 2, 5, 5);
+                    using var dotBrush = new SolidBrush(color);
+                    g.FillEllipse(dotBrush, points[0].X - 2, points[0].Y - 2, 5, 5);
                 }
                 return;
             }
 
             var pointsArray = points.ToArray();
 
-            // Fill Path (Line down to axis)
             using (var path = new GraphicsPath())
             {
                 path.AddLines(pointsArray);
-                
-                // Close the shape: Down to axis at last point X, then back to first point X at axis
                 float axisY = y + h;
-                path.AddLine(pointsArray.Last().X, axisY, pointsArray.First().X, axisY);
+                path.AddLine(pointsArray[^1].X, axisY, pointsArray[0].X, axisY);
                 path.CloseFigure();
 
                 if (fillArea)
                 {
-                    // "Solid wall" style
-                    // Using Alpha=255 might obscure grid lines. 
-                    // But requirement says "Fill for Usage... solid wall of color".
-                    // Let's use 255.
-                    using (var brush = new SolidBrush(color))
-                    {
-                        g.FillPath(brush, path);
-                    }
+                    using var brush = new SolidBrush(color);
+                    g.FillPath(brush, path);
                 }
                 else
                 {
-                    // Gradient from Color to Transparent
-                    using (var brush = new LinearGradientBrush(
-                        new RectangleF(x, y, w, h), 
-                        Color.FromArgb(100, color), 
+                    using var brush = new LinearGradientBrush(
+                        new RectangleF(x, y, w, h),
+                        Color.FromArgb(100, color),
                         Color.FromArgb(10, color),
-                        90f))
-                    {
-                        g.FillPath(brush, path);
-                    }
+                        90f);
+                    g.FillPath(brush, path);
                 }
             }
 
-            // Stroke Line (Top)
-            // If FillArea is true, do we draw keyline? Usually yes, to define the edge cleanly.
             using (var pen = new Pen(color, lineThickness))
-            {
                 g.DrawLines(pen, pointsArray);
-            }
-            
-            // End Dot
-            var last = pointsArray.Last();
+
+            var last = pointsArray[^1];
             using (var dotBrush = new SolidBrush(color))
-            {
                 g.FillEllipse(dotBrush, last.X - 2, last.Y - 2, 5, 5);
-            }
-            
+
             g.SmoothingMode = SmoothingMode.Default;
         }
 
-        private void UpdatePosition(Point cursor)
+        private static string FormatValue(float value, string unit)
         {
-            var screen = Screen.FromPoint(cursor);
-            int x = cursor.X - (Width / 2);
-            int y = cursor.Y - Height - 10;
-
-            if (x + Width > screen.WorkingArea.Right) x = screen.WorkingArea.Right - Width - 5;
-            if (x < screen.WorkingArea.Left) x = screen.WorkingArea.Left + 5;
-
-            // Smart vertical positioning
-            if (y < screen.WorkingArea.Top) y = cursor.Y + 20; 
-            if (y + Height > screen.WorkingArea.Bottom)
-                y = screen.WorkingArea.Bottom - Height - 5;
-
-            Location = new Point(x, y);
-        }
-
-        private void MonitorTimer_Tick(object? sender, EventArgs e)
-        {
-            var cursor = Cursor.Position;
-            var formRect = Bounds;
-            
-            // Ultra Strict: Minimal inflation
-            formRect.Inflate(2, 2); 
-            
-            // If we moved away from the show point by more than 5px (tiny tremor allowance), close it.
-            var distanceToIcon = Math.Sqrt(Math.Pow(cursor.X - _lastShowLocation.X, 2) + Math.Pow(cursor.Y - _lastShowLocation.Y, 2));
-
-            if (!formRect.Contains(cursor) && distanceToIcon > 5)
-            {
-                Hide();
-                _monitorTimer.Stop();
-            }
-        }
-        
-        protected override bool ShowWithoutActivation => true;
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _fontBold?.Dispose();
-                _fontNormal?.Dispose();
-                _fontEmoji?.Dispose();
-                _monitorTimer?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-        private string FormatValue(float value, string unit)
-        {
-            // Auto-scale specific units
             if (unit == "KB/s")
             {
                 if (value > 1024 * 1024) return $"{value / (1024 * 1024):F1} GB/s";
                 if (value > 1024) return $"{value / 1024:F1} MB/s";
-                return $"{value:F0} KB/s"; // No decimal for KB if small
+                return $"{value:F0} KB/s";
             }
             if (unit == "MB")
             {
@@ -528,18 +589,39 @@ namespace HotCPU
                 return $"{value:F0} MB";
             }
             if (unit.Trim().Equals("MHz", StringComparison.OrdinalIgnoreCase))
-            {
-                // User requested integer only for MHz.
-                // explicitly disable GHz scaling to comply with "show only integer".
                 return $"{value:F0} MHz";
+
+            if (unit == "°C" || unit == "%" || unit == "RPM")
+                return $"{Math.Round(value)}{unit}";
+
+            return $"{value:F1} {unit}";
+        }
+
+        // === Inner rendering control =======================================
+
+        /// <summary>
+        /// A child control that draws the full sensor tree into a tall
+        /// bitmap-sized canvas. Wrapping the drawing in its own control lets
+        /// the surrounding ScrollablePanel scroll the content vertically -
+        /// drawing directly on the form (as the old implementation did) made
+        /// everything below the working-area cutoff invisible and drove the
+        /// "cursor leaves window" misbehavior.
+        /// </summary>
+        private sealed class ContentCanvas : Control
+        {
+            private readonly HoverInfoForm _owner;
+
+            public ContentCanvas(HoverInfoForm owner)
+            {
+                _owner = owner;
+                DoubleBuffered = true;
+                SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
             }
 
-            // Standard Formatting
-            if (unit == "°C" || unit == "%" || unit == "RPM")
-                return $"{Math.Round(value)}{unit}"; // Tight spacing, integer
-
-            // Default
-            return $"{value:F1} {unit}";
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                _owner.RenderContent(e.Graphics, e.ClipRectangle);
+            }
         }
     }
 }

@@ -16,7 +16,11 @@ namespace HotCPU
         private readonly System.Timers.Timer _timer;
         private readonly PerformanceCounterCategory? _thermalCategory;
         private readonly AppSettings _settings;
-        private bool _disposed;
+        // Serializes all LibreHardwareMonitor / NvAPI / history access.
+        // LHM and NvAPI are not thread-safe; concurrent Open/Update/Close is a
+        // common source of native AVs that only show up on some machines.
+        private readonly object _computerLock = new();
+        private volatile bool _disposed;
         private bool _isNvApiInitialized;
         private string _cachedCpuName = "CPU";
         // WMI Circuit Breakers - disabled by default to prevent "Not supported" exceptions
@@ -25,9 +29,11 @@ namespace HotCPU
         private bool _wmiThermalFailed = true;
         private bool _wmiStorageFailed = true;
         private bool _wmiCimFailed = true;
+        private bool _autoReloadTried;
+        private bool _computerOpen;
 
         public event Action<TemperatureReading>? TemperatureChanged;
-        public TemperatureReading CurrentReading { get; private set; } = new(0, "Initializing...", null, new List<HardwareTemps>());
+        public TemperatureReading CurrentReading { get; private set; } = new(0, "Initializing...", null, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
 
         public TemperatureService(AppSettings settings)
         {
@@ -59,7 +65,9 @@ namespace HotCPU
             }
             catch { /* Ignore permission errors */ }
 
-            // Try Initialize NvAPI
+            // Try Initialize NvAPI. Failures are common on non-NVIDIA systems
+            // and on machines with broken/outdated drivers. Keep this isolated
+            // so a bad NvAPI never blocks the rest of the service from starting.
             try
             {
                 NVIDIA.Initialize();
@@ -80,27 +88,117 @@ namespace HotCPU
 
         public void Start()
         {
+            TemperatureReading? reading = null;
             try
             {
-                _computer.Open();
-                UpdateTemperature();
-                _timer.Start();
+                lock (_computerLock)
+                {
+                    if (_disposed) return;
+                    try
+                    {
+                        _computer.Open();
+                        _computerOpen = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        reading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
+                        CurrentReading = reading;
+                        // Still start the timer so UI can keep retrying via Reload
+                        // once the user installs PawnIO / drivers.
+                    }
+
+                    if (_computerOpen)
+                        reading = UpdateTemperatureCore();
+                }
+
+                if (reading != null)
+                    PublishReading(reading);
+
+                if (!_disposed)
+                    _timer.Start();
             }
             catch (Exception ex)
             {
-                CurrentReading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>());
-                TemperatureChanged?.Invoke(CurrentReading);
+                reading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
+                PublishReading(reading);
             }
         }
 
-        public void Stop() => _timer.Stop();
-        public void UpdateInterval(int intervalMs) => _timer.Interval = intervalMs;
+        public void Stop()
+        {
+            try { _timer.Stop(); } catch { /* ignore */ }
+        }
+
+        public void UpdateInterval(int intervalMs)
+        {
+            if (intervalMs < 250) intervalMs = 250;
+            try { _timer.Interval = intervalMs; } catch { /* disposed */ }
+        }
+
+        /// <summary>
+        /// Tear down the LibreHardwareMonitor computer and re-open it so that
+        /// newly installed drivers (notably PawnIO) start producing data
+        /// without requiring a full app restart.
+        /// </summary>
+        public void Reload()
+        {
+            if (_disposed) return;
+
+            try { _timer.Stop(); } catch { /* timer may already be stopped */ }
+
+            TemperatureReading? reading = null;
+            lock (_computerLock)
+            {
+                if (_disposed) return;
+
+                // Reset the auto-reload latch so a subsequent DriverMissing
+                // state can retry exactly once again after this reload.
+                _autoReloadTried = false;
+
+                if (_computerOpen)
+                {
+                    try { _computer.Close(); } catch { /* close errors are non-fatal here */ }
+                    _computerOpen = false;
+                }
+
+                try
+                {
+                    _computer.Open();
+                    _computerOpen = true;
+                    reading = UpdateTemperatureCore();
+                }
+                catch (Exception ex)
+                {
+                    reading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
+                    CurrentReading = reading;
+                }
+            }
+
+            if (reading != null)
+                PublishReading(reading);
+
+            if (!_disposed)
+            {
+                try { _timer.Start(); } catch { /* safe to ignore when disposed */ }
+            }
+        }
+
         private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
         {
             if (_disposed) return;
             try 
             {
                 UpdateTemperature();
+            }
+            catch (Exception ex)
+            {
+                // Never let a timer-thread exception kill the process.
+                try
+                {
+                    var reading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
+                    PublishReading(reading);
+                }
+                catch { /* last resort */ }
             }
             finally
             {
@@ -114,147 +212,227 @@ namespace HotCPU
 
         private void UpdateTemperature()
         {
+            if (_disposed) return;
+
+            TemperatureReading? reading = null;
+            bool scheduleReload = false;
+
             try
             {
-                float? mainCpuTemp = null;
-                string cpuName = "CPU";
-                var allHardwareTemps = new List<HardwareTemps>();
+                lock (_computerLock)
+                {
+                    if (_disposed || !_computerOpen) return;
+                    reading = UpdateTemperatureCore(out scheduleReload);
+                }
+            }
+            catch (Exception ex)
+            {
+                reading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>(), CpuSensorStatus.NotDetected);
+            }
 
-                // === LibreHardwareMonitor (Primary Source) ===
-                foreach (var hardware in _computer.Hardware)
+            // Publish outside the lock so UI handlers (which may call Reload
+            // or block on Control.Invoke) cannot deadlock with the timer thread.
+            if (reading != null)
+                PublishReading(reading);
+
+            if (scheduleReload && !_disposed)
+            {
+                // Run asynchronously so we don't recurse into UpdateTemperature
+                // while already inside it, and so we never hold _computerLock.
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try { Reload(); } catch { /* best-effort */ }
+                });
+            }
+        }
+
+        private void PublishReading(TemperatureReading reading)
+        {
+            CurrentReading = reading;
+            try
+            {
+                TemperatureChanged?.Invoke(reading);
+            }
+            catch
+            {
+                // Subscriber failures must never tear down the timer loop.
+            }
+        }
+
+        /// <summary>
+        /// Collect sensor data. Caller MUST hold <see cref="_computerLock"/>.
+        /// Event publish is intentionally left to the caller (outside the lock).
+        /// </summary>
+        private TemperatureReading UpdateTemperatureCore() => UpdateTemperatureCore(out _);
+
+        private TemperatureReading UpdateTemperatureCore(out bool scheduleReload)
+        {
+            scheduleReload = false;
+            float? mainCpuTemp = null;
+            string cpuName = "CPU";
+            var allHardwareTemps = new List<HardwareTemps>();
+
+            // === LibreHardwareMonitor (Primary Source) ===
+            foreach (var hardware in _computer.Hardware)
+            {
+                try
                 {
                     hardware.Update();
-                    
-                    // Debug: Log ALL hardware detected before filtering
-                    System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] Hardware: {hardware.Name}, Type: {hardware.HardwareType}, RawSensors: {hardware.Sensors.Length}, SubHW: {hardware.SubHardware.Length}");
-                    
-                    var hwTemps = new HardwareTemps(
-                        HotCPU.Helpers.StringHelper.SimplifyHardwareName(hardware.Name),
-                        GetHardwareTypeIcon(hardware.HardwareType),
-                        hardware.HardwareType.ToString());
+                }
+                catch
+                {
+                    // A single misbehaving device (e.g. flaky USB sensor /
+                    // storage SMART) must not abort the whole poll cycle.
+                    continue;
+                }
 
+                // Debug: Log ALL hardware detected before filtering
+                System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] Hardware: {hardware.Name}, Type: {hardware.HardwareType}, RawSensors: {hardware.Sensors.Length}, SubHW: {hardware.SubHardware.Length}");
+
+                var hwTemps = new HardwareTemps(
+                    HotCPU.Helpers.StringHelper.SimplifyHardwareName(hardware.Name),
+                    GetHardwareTypeIcon(hardware.HardwareType),
+                    hardware.HardwareType.ToString());
+
+                try
+                {
                     // Get ALL sensors from this hardware
                     CollectAllSensors(hardware, hwTemps);
 
                     // Check sub-hardware recursively
                     CollectSubHardware(hardware, hwTemps);
-                    
-                    // Debug: Log after filtering
-                    System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] -> After filter: {hwTemps.Sensors.Count} sensors");
-
-                    if (hwTemps.Sensors.Any())
-                        allHardwareTemps.Add(hwTemps);
-
-                    // Track main CPU temp for icon
-                    if (hardware.HardwareType == HardwareType.Cpu)
-                    {
-                        cpuName = hardware.Name;
-                        mainCpuTemp = GetMainCpuTemp(hwTemps.Sensors);
-                    }
                 }
-
-                // === NvAPI (NVIDIA GPU Source) ===
-                if (_isNvApiInitialized)
+                catch
                 {
-                    try
-                    {
-                        var nvidiaTemps = GetNvidiaTemperatures();
-                        if (nvidiaTemps.Sensors.Any())
-                            allHardwareTemps.Add(nvidiaTemps);
-                    }
-                    catch { }
+                    // Keep any sensors already collected for this hardware.
                 }
 
-                // === Performance Counters (Non-Admin Fallback for Motherboard) ===
-                if (_thermalCategory != null)
+                // Debug: Log after filtering
+                System.Diagnostics.Debug.WriteLine($"[HotCPU LHM] -> After filter: {hwTemps.Sensors.Count} sensors");
+
+                if (hwTemps.Sensors.Any())
+                    allHardwareTemps.Add(hwTemps);
+
+                // Track main CPU temp for icon
+                if (hardware.HardwareType == HardwareType.Cpu)
                 {
-                    try
-                    {
-                        var perfTemps = GetPerformanceCounterTemperatures();
-                        if (perfTemps.Sensors.Any())
-                            allHardwareTemps.Add(perfTemps);
-                    }
-                    catch { }
+                    cpuName = hardware.Name;
+                    mainCpuTemp = GetMainCpuTemp(hwTemps.Sensors);
                 }
-
-                // === WMI Temperature Sensors (Backup Source for Thermal Zones) ===
-                if (!_wmiThermalFailed)
-                {
-                    var (wmiTemps, failed) = GetWmiTemperatures();
-                    if (failed)
-                        _wmiThermalFailed = true;
-                    else if (wmiTemps.Sensors.Any())
-                        allHardwareTemps.Add(wmiTemps);
-                }
-
-                // === WMI Storage Temperatures (Backup for Disks) ===
-                if (!_wmiStorageFailed)
-                {
-                    var (diskTemps, failed) = GetStorageTemperaturesFromWmi();
-                    if (failed)
-                        _wmiStorageFailed = true;
-                    else if (diskTemps.Sensors.Any())
-                        allHardwareTemps.Add(diskTemps);
-                }
-
-                // === CIMv2 Thermal Zone Information (Standard User Friendly) ===
-                if (!_wmiCimFailed)
-                {
-                    var (cimTemps, failed) = GetCimTemperatures();
-                    if (failed)
-                        _wmiCimFailed = true;
-                    else if (cimTemps.Sensors.Any())
-                        allHardwareTemps.Add(cimTemps);
-                }
-
-                // Check if we have any real CPU
-                bool hasCpu = allHardwareTemps.Any(h => h.Type == "Cpu" && h.Sensors.Any());
-
-                // Fallback: If no CPU temp found, use the MAX of any available TEMPERATURE sensor
-                if (!hasCpu || mainCpuTemp == null || mainCpuTemp <= 0)
-                {
-                    var maxSensor = allHardwareTemps
-                        .SelectMany(h => h.Sensors)
-                        .Where(s => s.Type == "Temperature" && s.Value > 0 && s.Value < 200) // Only valid temps
-                        .OrderByDescending(s => s.Temperature)
-                        .FirstOrDefault();
-                    
-                    if (maxSensor != null)
-                    {
-                        mainCpuTemp = maxSensor.Temperature;
-                        cpuName = HotCPU.Helpers.StringHelper.SimplifyHardwareName(_cachedCpuName);
-
-                        // Create a simulated CPU hardware so it shows up in the UI/Settings
-                        var simCpu = new HardwareTemps(cpuName, "🔲", "Cpu");
-                        var simId = "Simulated_CPU_Max";
-                        UpdateHistory(simId, maxSensor.Temperature);
-                        
-                        simCpu.Sensors.Add(new SensorTemp(
-                            "Core", 
-                            maxSensor.Temperature,  // Use Temperature, not raw Value
-                            "Temperature",          // Correct type
-                            "°C",
-                            GetHistory(simId), 
-                            simId));
-                        
-                        // Insert at the top so it looks like a primary CPU
-                        allHardwareTemps.Insert(0, simCpu);
-                    }
-                }
-
-                CurrentReading = new TemperatureReading(
-                    mainCpuTemp ?? 0,
-                    cpuName,
-                    _settings,
-                    allHardwareTemps);
-
-                TemperatureChanged?.Invoke(CurrentReading);
             }
-            catch (Exception ex)
+
+            // === NvAPI (NVIDIA GPU Source) ===
+            if (_isNvApiInitialized)
             {
-                CurrentReading = new TemperatureReading(0, $"Error: {ex.Message}", _settings, new List<HardwareTemps>());
-                TemperatureChanged?.Invoke(CurrentReading);
+                try
+                {
+                    var nvidiaTemps = GetNvidiaTemperatures();
+                    if (nvidiaTemps.Sensors.Any())
+                        allHardwareTemps.Add(nvidiaTemps);
+                }
+                catch
+                {
+                    // One bad poll should not permanently disable NvAPI, but
+                    // repeated native failures are handled by the outer catch
+                    // around UpdateTemperature. If Unload is needed we do that
+                    // on Dispose only.
+                }
             }
+
+            // === Performance Counters (Non-Admin Fallback for Motherboard) ===
+            if (_thermalCategory != null)
+            {
+                try
+                {
+                    var perfTemps = GetPerformanceCounterTemperatures();
+                    if (perfTemps.Sensors.Any())
+                        allHardwareTemps.Add(perfTemps);
+                }
+                catch { }
+            }
+
+            // === WMI Temperature Sensors (Backup Source for Thermal Zones) ===
+            if (!_wmiThermalFailed)
+            {
+                var (wmiTemps, failed) = GetWmiTemperatures();
+                if (failed)
+                    _wmiThermalFailed = true;
+                else if (wmiTemps.Sensors.Any())
+                    allHardwareTemps.Add(wmiTemps);
+            }
+
+            // === WMI Storage Temperatures (Backup for Disks) ===
+            if (!_wmiStorageFailed)
+            {
+                var (diskTemps, failed) = GetStorageTemperaturesFromWmi();
+                if (failed)
+                    _wmiStorageFailed = true;
+                else if (diskTemps.Sensors.Any())
+                    allHardwareTemps.Add(diskTemps);
+            }
+
+            // === CIMv2 Thermal Zone Information (Standard User Friendly) ===
+            if (!_wmiCimFailed)
+            {
+                var (cimTemps, failed) = GetCimTemperatures();
+                if (failed)
+                    _wmiCimFailed = true;
+                else if (cimTemps.Sensors.Any())
+                    allHardwareTemps.Add(cimTemps);
+            }
+
+            // Classify the CPU-sensor state so the UI can be honest about
+            // what it's showing. Previously we silently fell back to the
+            // hottest non-CPU sensor and labelled it "CPU Core", which on
+            // Ryzen systems without PawnIO produced numbers like 51C that
+            // were really the iGPU VR SoC or an NVME controller.
+            bool hasCpuHardware = allHardwareTemps.Any(h => h.Type == "Cpu");
+            bool hasCpuTemp = mainCpuTemp.HasValue && mainCpuTemp.Value > 0;
+
+            CpuSensorStatus status;
+            if (hasCpuTemp)
+            {
+                // Real reading - reset the auto-reload latch so a later
+                // uninstall/reinstall cycle can re-trigger it.
+                _autoReloadTried = false;
+                status = CpuSensorStatus.Available;
+            }
+            else if (hasCpuHardware)
+            {
+                // LHM detected the CPU but every temperature sensor was 0.
+                // This is the classic "PawnIO driver not installed" signature
+                // on AMD Ryzen; on Intel it can also mean missing ring-0 access.
+                //
+                // If PawnIO is actually installed, LHM simply missed it on
+                // the Computer.Open() call (usually because HotCPU started
+                // before the driver did). Trigger a one-shot auto-reload;
+                // the next tick will typically flip us into Available.
+                if (CpuDriverHelper.IsPawnIoInstalled() && !_autoReloadTried)
+                {
+                    _autoReloadTried = true;
+                    scheduleReload = true;
+                }
+
+                status = CpuSensorStatus.DriverMissing;
+                cpuName = HotCPU.Helpers.StringHelper.SimplifyHardwareName(_cachedCpuName);
+                mainCpuTemp = null;
+            }
+            else
+            {
+                status = CpuSensorStatus.NotDetected;
+                cpuName = HotCPU.Helpers.StringHelper.SimplifyHardwareName(_cachedCpuName);
+                mainCpuTemp = null;
+            }
+
+            var reading = new TemperatureReading(
+                mainCpuTemp ?? 0,
+                cpuName,
+                _settings,
+                allHardwareTemps,
+                status);
+
+            CurrentReading = reading;
+            return reading;
         }
 
 
@@ -460,8 +638,15 @@ namespace HotCPU
         {
             foreach (var subHardware in hardware.SubHardware)
             {
-                subHardware.Update();
-                
+                try
+                {
+                    subHardware.Update();
+                }
+                catch
+                {
+                    continue;
+                }
+
                 foreach (var sensor in subHardware.Sensors)
                 {
                     if (sensor.Value.HasValue)
@@ -856,10 +1041,26 @@ namespace HotCPU
             sb.AppendLine();
 
             sb.AppendLine("=== LibreHardwareMonitor Sensors ===");
-            foreach (var hardware in _computer.Hardware)
+            lock (_computerLock)
             {
-                AppendHardwareSensorsRecursive(hardware, sb, depth: 0);
-                sb.AppendLine();
+                if (!_computerOpen)
+                {
+                    sb.AppendLine("(computer not open)");
+                    return sb.ToString();
+                }
+
+                foreach (var hardware in _computer.Hardware)
+                {
+                    try
+                    {
+                        AppendHardwareSensorsRecursive(hardware, sb, depth: 0);
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"  (error reading hardware: {ex.Message})");
+                    }
+                    sb.AppendLine();
+                }
             }
 
             return sb.ToString();
@@ -969,22 +1170,41 @@ namespace HotCPU
         {
             if (_disposed) return;
             _disposed = true;
-            
+
+            // Stop the timer first so OnTimerElapsed cannot re-enter while we
+            // tear down native resources.
+            try { _timer.Stop(); } catch { }
+            try { _timer.Elapsed -= OnTimerElapsed; } catch { }
+            try { _timer.Dispose(); } catch { }
+
+            lock (_computerLock)
+            {
+                if (_computerOpen)
+                {
+                    try { _computer.Close(); } catch { }
+                    _computerOpen = false;
+                }
+            }
+
             if (_isNvApiInitialized)
             {
                 try { NVIDIA.Unload(); } catch { }
+                _isNvApiInitialized = false;
             }
-            
-            _timer.Stop();
-            _timer.Dispose();
-            _computer.Close();
         }
     }
 
     // Data classes
     internal record SensorTemp(string Name, float Value, string Type, string Unit, float[] History, string Identifier = "")
     {
-        public int RoundedValue => (int)Math.Round(Value);
+        public int RoundedValue
+        {
+            get
+            {
+                if (float.IsNaN(Value) || float.IsInfinity(Value)) return 0;
+                return (int)Math.Round(Value);
+            }
+        }
         // Compat property, prefer Value
         public float Temperature => Value; 
     }
@@ -999,15 +1219,32 @@ namespace HotCPU
             .FirstOrDefault();
     }
 
-    internal record TemperatureReading(float Temperature, string CpuName, AppSettings? Settings, List<HardwareTemps> AllTemps)
+    internal record TemperatureReading(
+        float Temperature,
+        string CpuName,
+        AppSettings? Settings,
+        List<HardwareTemps> AllTemps,
+        CpuSensorStatus CpuStatus = CpuSensorStatus.Available)
     {
-        public int RoundedTemperature => (int)Math.Round(Temperature);
+        public int RoundedTemperature =>
+            float.IsNaN(Temperature) || float.IsInfinity(Temperature)
+                ? 0
+                : (int)Math.Round(Temperature);
+
+        /// <summary>True when the tray should show a real CPU temperature.</summary>
+        public bool HasCpuTemperature => CpuStatus == CpuSensorStatus.Available && Temperature > 0;
 
         public TemperatureLevel Level
         {
             get
             {
                 var s = Settings ?? new AppSettings();
+                // When there's no real CPU reading, stay Cool so the tray icon
+                // renders in its neutral color instead of flickering through
+                // Warm/Hot/Critical on zero.
+                if (!HasCpuTemperature)
+                    return TemperatureLevel.Cool;
+
                 // Guard against NaN and negative sentinel temps. Pattern matching
                 // with NaN falls through every branch (NaN comparisons are false),
                 // which used to silently classify as Critical.
@@ -1024,14 +1261,23 @@ namespace HotCPU
             }
         }
 
-        public string DisplayText => RoundedTemperature.ToString();
+        public string DisplayText => HasCpuTemperature ? RoundedTemperature.ToString() : "--";
 
         public string TooltipText
         {
             get
             {
-                var parts = new List<string> { $"{CpuName}: {RoundedTemperature}°C" };
-                
+                string cpuPart = HasCpuTemperature
+                    ? $"{CpuName}: {RoundedTemperature}°C"
+                    : CpuStatus switch
+                    {
+                        CpuSensorStatus.DriverMissing => $"{CpuName}: sensor unavailable (PawnIO driver missing)",
+                        CpuSensorStatus.NotDetected   => "CPU not detected",
+                        _                             => $"{CpuName}: --",
+                    };
+
+                var parts = new List<string> { cpuPart };
+
                 var gpu = AllTemps.FirstOrDefault(h => h.Type.Contains("Gpu"));
                 if (gpu?.MaxTemp != null)
                     parts.Add($"GPU: {(int)gpu.MaxTemp}°C");

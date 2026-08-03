@@ -7,34 +7,56 @@ namespace HotCPU
 {
     public class SplashForm : Form
     {
+        private readonly System.Windows.Forms.Timer _timer;
+
         public SplashForm()
         {
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Size = new Size(256, 256);
-            this.ShowInTaskbar = false;
-            
-            string imagePath = Path.Combine(AppContext.BaseDirectory, "Images", "AppIcon.png");
-            if (File.Exists(imagePath))
-            {
-                this.BackgroundImage = Image.FromFile(imagePath);
-                this.BackgroundImageLayout = ImageLayout.Zoom;
-            }
-            
-            // Set transparency key to support simple transparency if the PNG has a distinct background
-            // or if we want the form to be shaped like the image.
-            // Using Magenta as a common "magic pink" for transparency.
-            this.BackColor = Color.Magenta;
-            this.TransparencyKey = Color.Magenta;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterScreen;
+            Size = new Size(256, 256);
+            ShowInTaskbar = false;
 
-            var timer = new System.Windows.Forms.Timer();
-            timer.Interval = 1000; // 1 second
-            timer.Tick += (s, e) => 
+            try
             {
-                timer.Stop();
-                this.Close();
+                string imagePath = Path.Combine(AppContext.BaseDirectory, "Images", "AppIcon.png");
+                if (File.Exists(imagePath))
+                {
+                    BackgroundImage = Image.FromFile(imagePath);
+                    BackgroundImageLayout = ImageLayout.Zoom;
+                }
+            }
+            catch
+            {
+                // Missing/corrupt image must never prevent startup.
+            }
+
+            // Magenta transparency key for simple PNG chrome.
+            BackColor = Color.Magenta;
+            TransparencyKey = Color.Magenta;
+
+            _timer = new System.Windows.Forms.Timer { Interval = 1000 };
+            _timer.Tick += (_, _) =>
+            {
+                try { _timer.Stop(); } catch { }
+                try { Close(); } catch { }
             };
-            timer.Start();
+            _timer.Start();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                try { _timer.Stop(); } catch { }
+                try { _timer.Dispose(); } catch { }
+                try
+                {
+                    BackgroundImage?.Dispose();
+                    BackgroundImage = null;
+                }
+                catch { }
+            }
+            base.Dispose(disposing);
         }
     }
 }

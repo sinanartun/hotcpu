@@ -1,6 +1,8 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using HotCPU.Localization;
 
@@ -20,8 +22,22 @@ namespace HotCPU
                 return;
             }
 
-            const string mutexName = "HotCPU_SingleInstance_Mutex";
-            _mutex = new Mutex(true, mutexName, out bool createdNew);
+            // Local\ keeps the single-instance mutex per user session. A bare
+            // name can collide across sessions / elevation boundaries and throw
+            // on some multi-user / Terminal Server machines.
+            const string mutexName = @"Local\HotCPU_SingleInstance_Mutex";
+            bool createdNew;
+            try
+            {
+                _mutex = new Mutex(true, mutexName, out createdNew);
+            }
+            catch (Exception ex)
+            {
+                // Mutex creation failure must not prevent the app from starting.
+                HandleException(ex, "Mutex");
+                createdNew = true;
+                _mutex = null;
+            }
 
             if (!createdNew)
             {
@@ -36,21 +52,57 @@ namespace HotCPU
             AppSettings settings = AppSettings.Load();
             ApplyCulture(settings);
 
-            // Global Exception Handling
+            // Global Exception Handling — managed exceptions only. Native AVs
+            // from LibreHardwareMonitor / NvAPI still tear down the process,
+            // which is why those libraries are also hardened separately.
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) => HandleException(e.Exception, "UI Thread");
             AppDomain.CurrentDomain.UnhandledException += (s, e) => HandleException(e.ExceptionObject as Exception, "AppDomain");
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                HandleException(e.Exception, "Task");
+                e.SetObserved();
+            };
 
             try
             {
                 ApplicationConfiguration.Initialize();
-                Application.Run(new SplashForm());
+                try
+                {
+                    Application.Run(new SplashForm());
+                }
+                catch (Exception ex)
+                {
+                    // Splash is cosmetic; never block the tray app from starting.
+                    HandleException(ex, "Splash");
+                }
+
                 Application.Run(new TrayApplicationContext(settings));
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, "Main");
+                try
+                {
+                    MessageBox.Show(
+                        "HotCPU failed to start. Details were written to the log in %LOCALAPPDATA%\\HotCPU\\fatal_error.log",
+                        "HotCPU",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                catch { /* ignore */ }
             }
             finally
             {
-                _mutex?.ReleaseMutex();
-                _mutex?.Dispose();
+                try
+                {
+                    if (_mutex != null)
+                    {
+                        try { _mutex.ReleaseMutex(); } catch { /* abandoned / not owned */ }
+                        _mutex.Dispose();
+                    }
+                }
+                catch { /* ignore */ }
             }
         }
 
@@ -111,9 +163,16 @@ namespace HotCPU
             if (ex == null) return;
             try
             {
-                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fatal_error.log");
+                // MSIX install directories are read-only for Store packages, so
+                // BaseDirectory writes always fail there. Prefer LocalAppData.
+                string dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "HotCPU");
+                Directory.CreateDirectory(dir);
+                string path = Path.Combine(dir, "fatal_error.log");
                 string message = $"[{DateTime.Now}] [{source}] Critical Error: {ex}\n\n";
                 File.AppendAllText(path, message);
+                DebugLog.Error("Fatal", $"{source}: {ex.Message}", ex);
             }
             catch 
             {
@@ -135,18 +194,30 @@ namespace HotCPU
         public TrayApplicationContext(AppSettings settings)
         {
             _settings = settings;
-            _temperatureService = new TemperatureService(_settings);
-            _loggerService = new LoggerService(_temperatureService, _settings);
-            _trayIconManager = new TrayIconManager(_temperatureService, _loggerService, _settings, ExitApplication);
-            _temperatureService.Start();
+            try
+            {
+                _temperatureService = new TemperatureService(_settings);
+                _loggerService = new LoggerService(_temperatureService, _settings);
+                _trayIconManager = new TrayIconManager(_temperatureService, _loggerService, _settings, ExitApplication);
+                _temperatureService.Start();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Error("App", "TrayApplicationContext init failed", ex);
+                // Re-throw so Program.Main can show a user-visible error and log it.
+                // Leaving a half-constructed context running would only crash later.
+                throw;
+            }
         }
 
         private void ExitApplication()
         {
-            _trayIconManager.Dispose();
-            _loggerService.Dispose();
-            _temperatureService.Dispose();
+            DebugLog.Info("App", "ExitApplication: disposing services and calling Application.Exit");
+            try { _trayIconManager.Dispose(); } catch (Exception ex) { DebugLog.Error("App", "tray dispose failed", ex); }
+            try { _loggerService.Dispose(); } catch (Exception ex) { DebugLog.Error("App", "logger dispose failed", ex); }
+            try { _temperatureService.Dispose(); } catch (Exception ex) { DebugLog.Error("App", "temp service dispose failed", ex); }
             Application.Exit();
+            DebugLog.Info("App", "Application.Exit returned");
         }
 
         protected override void Dispose(bool disposing)
